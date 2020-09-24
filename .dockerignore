@@ -1,0 +1,7 @@
+node_modules
+*.ogg
+*.flac
+*.mp3
+dist
+rec
+package-lock.json
