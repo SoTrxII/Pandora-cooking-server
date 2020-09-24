@@ -2,7 +2,7 @@ FROM node:current-slim as build
 WORKDIR /app
 COPY package.json /app/
 RUN apt update -y \
-    && DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y nodejs ffmpeg flac vorbis-tools build-essential zip fdkaac git \
+    && DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y nodejs ffmpeg flac vorbis-tools build-essential zip fdk-aac git \
     && npm install
 
 COPY . /app/
@@ -14,7 +14,7 @@ FROM node:current-slim as prod
 WORKDIR /app
 COPY --from=build /app/dist /app
 RUN apt update -y \
-    && DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y ffmpeg flac build-essential vorbis-tools zip fdkaac git\
+    && DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y ffmpeg flac build-essential vorbis-tools zip fdk-aac git\
     && npm install -g pm2 modclean \
     && npm install --only=prod \
     && modclean -r \
