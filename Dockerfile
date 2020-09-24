@@ -1,4 +1,4 @@
-FROM ubuntu:latest as buil
+FROM ubuntu:latest as build
 WORKDIR /app
 COPY package.json /app/
 RUN apt update -y \
