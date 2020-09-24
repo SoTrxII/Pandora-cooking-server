@@ -26,5 +26,5 @@ RUN apt update -y \
     && apt autoremove --yes \
     && rm -rf /root/.npm /usr/local/lib/node_modules/npm /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-EXPOSE 3004;
+EXPOSE 3004
 CMD ["pm2-runtime", "/app/server.js"]
