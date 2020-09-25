@@ -1,55 +1,27 @@
-# Pandora: Discord recorder
+# Pandora cooking server:
 
-Pandora is a multi-track Discord voice recorder written in Typescript. This project should actually be considered as a kind-of a fork of
-[Yahweasel's Pandora](https://github.com/Yahweasel/craig) as the recording process is itself pretty much the same, and the
-"cooking" process is just a straight copy. Initially, I just needed to add some workflow changes to Pandora, but plain
-Javascript wasn't that easy to work with, and I ended up refactoring the whole thing, cherry picking
-the functionalities I wanted.
-
-Pandora can be regarded as a simplified version of Pandora, intended to be used to record a single voice channel at a time.
+This is the cooking server for Pandora. All the audio processing scripts were written by Yahweasel 
+for [Craig](https://github.com/Yahweasel/craig). This is basically just a server wrapper around the
+cooking scripts.
 
 ## Usage
 
-There are two ways to use Pandora. Either by using commands (as any other Discord Bot), or by using a Redis PubSub
-database to begin/end the recording. This second way of inputting commands is useful when an external process is
-triggering the recording (such as another bot, or a web service). You can choose one way (or both) in the
-[configuration section](#configuration).
+The API is very simple:
 
-### Commands
++ GET /<recording_id> 
+    + Description : Process the recording identified by *recording_id*. 
+    + Query string arguments :
+        + format : Audio codec/extension wanted. **Default: Opus**
+        + container: Either *mix* (One audio file for the whole recording) or *aupzip* (one audio file per user). 
+        **Default: mix**
+    + Examples :
+        + /872660673?format=mp3&container=aupzip will produce one mp3 file for each user (don't use mp3).
+        The returned file will be a zip file containing all mp3.
+        + /2222?format=aac will return a single .aac audio file for the whole recording.
+        
++ DELETE /<recording_id>
+    + Description : delete the recording identified by *recording_id*. 
 
-```bash
-# The default command prefix is "."
-# Start a recording session
-.record
-
-# End a recording session
-.end
-```
-
-### Redis
-
-In order to begin a recording session, you have to publish to the channel `startRecordingDiscord`. The [Redis Payload](#redis-message)
-must contain the voice channel id to record in the data Object.
-Example: 
-```ts
-// Create a Redis publisher instance by any means
-redis.publish("startRecordingDiscord", {
-    hasError : false,
-    data : { voiceChannelId : "<ID of the voice channel to record>"},    
-})
-```
-Once the recording started, an acknowledgment will be sent on the channel `recordingDiscordBegan`.
-
-Likewise, to stop recording, simply publish to the channel `stopRecordingDiscord`.
- Example: 
- ```ts
- // Create a Redis publisher instance by any means
- redis.publish("stopRecordingDiscord", {
-     hasError : false,
-     data : { voiceChannelId : "<ID of the voice channel to record>"},    
- })
- ```
-The acknowledgment will be sent on the channel `recordingDiscordStopped`.
 
 ## Installation
 
@@ -58,10 +30,10 @@ Using Docker to run the bot is the recommended (and easy) way.
 ```bash
 # Either pull the bot from the GitHub registry (requiring login for some reason)
 docker login docker.pkg.github.com --username <YOUR_USERNAME>
-docker pull docker.pkg.github.com/sotrx/pandora/pandora:latest
+docker pull docker.pkg.github.com/sotrx/pandora-cooking-server/pandora-cooking-server:latest
 
 # OR build it yourself (from the project's root)
-docker build -t docker.pkg.github.com/sotrx/pandora/pandora:latest
+docker build -t docker.pkg.github.com/sotrx/pandora-cooking-server/pandora-cooking-server:latest
 ```
 Once the image is pulled/built, run it:
 
@@ -72,17 +44,17 @@ docker run \
 -e COMMAND_PREFX="." \
 -e PANDORA_TOKEN="<DISCORD_BOT_TOKEN>" \
 -e REDIS_HOST="<REDIS_DB_URL>" \
--it docker.pkg.github.com/sotrx/pandora/pandora:latest
+-it docker.pkg.github.com/sotrx/pandora-cooking-server/pandora-cooking-server:latest
 ```
 Refer to the [configuration](#configuration) for an explanation of the environment variables.
 The bot should be up and running !
 
 #### Why not Alpine ? 
 Alpine is lacking some unix tools and would require a custom ffmpeg build to run all the possible configuration of the
-cooking process. The extra gain in space is not worth going through that.  
+cooking process. The extra gain in space is not worth going through that honestly.  
 
 ### Natively
-Running the bot natively is a bit trickier, but not that difficult. Using Docker is a better way still. 
+Running the server natively is a bit trickier, but not that difficult.
 
 #### Requirements
 
@@ -111,8 +83,6 @@ Next, all the cooking scripts needs to be compiled. Beware, you will need GCC/ma
 # From the project's root
 cd cook
 for i in \*.c; do gcc -O3 -o ${i%.c} $i; done
-cd windows; make
-cd macosx; make
 ```
 
 #### Direct dependencies and transpilation
