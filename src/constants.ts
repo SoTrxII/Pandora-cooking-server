@@ -4,6 +4,7 @@ export enum ALLOWED_FORMATS {
     VORBIS = "vorbis",
     AAC = "aac",
     HEAAC = "heaac",
+    FLAC = "flac",
     OPUS = "opus",
     WAV = "wav",
     ADPCM = "adpcm",
