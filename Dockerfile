@@ -28,4 +28,4 @@ RUN apt update -y \
 
 EXPOSE 3004
 COPY start.sh /app/start.sh
-CMD ["./app/start.sh"]
+CMD ["/app/start.sh"]
