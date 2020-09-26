@@ -6,9 +6,9 @@ RUN apt update -y \
     && npm install
 
 COPY . /app/
-RUN npm run build \
-    && cd /app/cook \
-    && for i in *.c; do gcc -O3 -o ${i%.c} $i; done
+RUN cd /app/cook \
+    && for i in *.c; do gcc -O3 -o ${i%.c} $i; done \
+    && npm run build
 
 FROM ubuntu:latest  as prod
 WORKDIR /app

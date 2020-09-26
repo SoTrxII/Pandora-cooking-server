@@ -94,7 +94,7 @@ npm install
 npm run build
 ```
 
-### Running the Bot
+### Running the server
 
 Copy .env.example into .env. Refer to the [configuration step](#configuration) to fill the values. 
 When this is done, the quickest way to get the bot running is to run:
@@ -118,24 +118,11 @@ npm install --only=prod
 npm install dotenv-safe
 node -r dotenv-safe/config main.js
 ```
-With this, Pandora should be up and running ! 
+With this, the server should be up and running ! 
 
 If you've read all this, congratulations. Now, seriously, just use Docker. 
 
 ## Configuration
-
-Pandora uses 5 environment variables to control its runtime behaviour.
-
-+ COMMAND_PREFX : This is the command prefix for the Discord commands. Use whatever you like.
-+ PANDORA_TOKEN : Standard discord bot token. You can see your apps in the [Discord developers portal](https://discord.com/developers/applications)
-+ USE_COMMAND_INTERFACE : Either "1" or "O" (Boolean). When enabled ("1") the bot will listen to Discord commands (<prefix>record, <prefix>end)
-+ USE_REDIS_INTERFACE : Either "1" or "O" (Boolean). When enabled ("1") the bot will attempt to connect to the REDIS_HOST and listen to the command.
-+ REDIS_HOST : Redis DB URL.
-
-If USE_REDIS_INTERFACE is "0", REDIS_HOST is defaulting to localhost and can be not provided.
-Both USE_COMMAND_INTERFACE and USE_COMMAND_INTERFACE can be enabled at the same time. The audio recording process is a Singleton. 
-You could start a recording via Redis and end it via a discord command (Why tho ?).
-
 
 
 

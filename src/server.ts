@@ -35,6 +35,7 @@ app.get("/:id", (req, res) => {
     }).pipe(res);
   } catch (e) {
     console.error(e);
+    res.attachment(`audio`);
     res.status(500);
     res.end("Error while cooking recording with id: " + id);
   }
