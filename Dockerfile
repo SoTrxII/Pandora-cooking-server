@@ -14,7 +14,7 @@ FROM ubuntu:latest  as prod
 WORKDIR /app
 COPY --from=build /app/dist /app
 RUN apt update -y \
-    && DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y nodejs npm ffmpeg flac build-essential vorbis-tools zip fdkaac git\
+    && DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y nodejs npm ffmpeg flac build-essential vorbis-tools zip fdkaac git at\
     && npm install -g pm2 modclean \
     && npm install --only=prod \
     && modclean -r \
@@ -27,4 +27,5 @@ RUN apt update -y \
     && rm -rf /root/.npm /usr/local/lib/node_modules/npm /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 EXPOSE 3004
-CMD ["pm2-runtime", "/app/server.js"]
+COPY start.sh /app/start.sh
+CMD ["./app/start.sh"]
