@@ -1,7 +1,7 @@
 # Pandora cooking server:
 
 This is the cooking server for Pandora. All the audio processing scripts were written by Yahweasel 
-for [Craig](https://github.com/Yahweasel/craig). This is basically just a server wrapper around the
+for [Craig](https://github.com/Yahweasel/craig). This project is just a server wrapper around the
 cooking scripts.
 
 However, the cooking scripts have been slightly changed : 
@@ -12,7 +12,7 @@ However, the cooking scripts have been slightly changed :
     + Description : Process the recording identified by *recording_id*. 
     + Query string arguments :
         + format : Audio codec/extension wanted 
-            + copy : Copy the raw ogg streams for each users. This option isn't compatible with the mix format.
+            + copy : Copy the raw ogg streams for each user. This option isn't compatible with the mix container.
             + oggflac
             + aac
             + he-aac : Be careful, this one is platform-dependant. See [limitations](#known-limitations--trivia).
@@ -24,13 +24,15 @@ However, the cooking scripts have been slightly changed :
             + wav8
             + mp3 : Widespread but not that great, opus is way better.   
             + ra
+        
         **Default: Opus**
-        + container : "Box" to put the stream in
+        + container : "Box" to put the audio streams in
             + *mix* (One audio file for the whole recording)
             + *zip* (one audio file per user in a zip file)
             + *ogg* (Multi-channels .ogg file)
             + *matroska* (Multi-channels .mka file)
             + *aupzip* (one audio file par user in a zipped Audacity project ) 
+        
         **Default: mix**
     + Examples :
         + /872660673?format=mp3&container=aupzip will produce one mp3 file for each user (don't use mp3).
@@ -56,16 +58,8 @@ docker build -t docker.pkg.github.com/sotrx/pandora-cooking-server/pandora-cooki
 Once the image is pulled/built, run it:
 
 ```bash
-docker run \
--e USE_COMMAND_INTERFACE="<1 or 0>" \
--e USE_REDIS_INTERFACE="<1 or 0>" \
--e COMMAND_PREFX="." \
--e PANDORA_TOKEN="<DISCORD_BOT_TOKEN>" \
--e REDIS_HOST="<REDIS_DB_URL>" \
--it docker.pkg.github.com/sotrx/pandora-cooking-server/pandora-cooking-server:latest
+docker run -it docker.pkg.github.com/sotrx/pandora-cooking-server/pandora-cooking-server:latest
 ```
-Refer to the [configuration](#configuration) for an explanation of the environment variables.
-The bot should be up and running !
 
 #### Why not Alpine ? 
 Alpine is lacking some unix tools and would require a custom ffmpeg build to run all the possible configuration of the
@@ -116,26 +110,20 @@ npm run build
 ### Running the server
 
 Copy .env.example into .env. Refer to the [configuration step](#configuration) to fill the values. 
-When this is done, the quickest way to get the bot running is to run:
+When this is done, the quickest way to get the server running is to run:
    
     npm run start:dev
     
 However, this is not the best way to run it in a production environment. 
 
 A cleaner way would be to copy the **dist** directory, containing the transpiled Javascript, into another location and
-only install the production dependencies (This is what the Dockerfile do).
+only install the production dependencies.
 ```bash
 # From the project's root
-cp -r dist /away/pandora
-cp .env /away/pandora/.env
-cd /away/pandora
-
-# We don't need all these devdependencies 
+cp -r dist /away/pandora-cooking-server
+cd /away/pandora-cooking-server
 npm install --only=prod
-
-# Load the .env file into the bot process.
-npm install dotenv-safe
-node -r dotenv-safe/config main.js
+node main.js
 ```
 With this, the server should be up and running ! 
 
