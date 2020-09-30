@@ -1,8 +1,8 @@
-# Pandora cooking server:
+# Pandora cooking server
 
-This is the cooking server for Pandora. All the audio processing scripts were written by Yahweasel 
-for [Craig](https://github.com/Yahweasel/craig). This project is just a server wrapper around the
-cooking scripts.
+This is the cooking server for [Pandora](https://github.com/SoTrxII/Pandora).
+All the audio processing scripts were written by Yahweasel for [Craig](https://github.com/Yahweasel/craig).
+This project is just a server wrapper around the cooking scripts.
 
 However, the cooking scripts have been slightly changed : 
 + Removed exclusive locking (only shared locks except for deletion), allowing multiple downloads at once.
