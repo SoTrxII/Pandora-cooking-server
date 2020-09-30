@@ -562,13 +562,13 @@ describe("Cooking", () => {
     it(
       "aac",
       async () => {
-        const size = await orderCooking(SAMPLE_ID, {
-          dynaudnorm: false,
-          container: ALLOWED_CONTAINERS.MATROSKA,
-          format: ALLOWED_FORMATS.AAC,
-        });
-        console.log(size);
-        expect(size).toBeGreaterThan(FILE_MIN_SIZE);
+          await expect(
+              orderCooking(SAMPLE_ID, {
+                  dynaudnorm: false,
+                  container: ALLOWED_CONTAINERS.OGG,
+                  format: ALLOWED_FORMATS.AAC,
+              })
+          ).rejects.toThrow(CookerOptionsInvalidError);
       },
       TIMEOUT
     );
