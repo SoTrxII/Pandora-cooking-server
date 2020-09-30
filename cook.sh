@@ -164,7 +164,7 @@ fi
 
 # Take a lock on the data file so that we can detect active downloads
 exec 9< "$ID.ogg.data"
-flock -n 9 || exit 1
+flock -n -s 9 || exit 1
 
 NICE="nice -n10 taskset -c 0-7 ionice -c3 chrt -i 0"
 CODECS=`timeout 10 "$SCRIPTBASE/cook/oggtracks" < $ID.ogg.header1`

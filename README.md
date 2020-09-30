@@ -4,15 +4,33 @@ This is the cooking server for Pandora. All the audio processing scripts were wr
 for [Craig](https://github.com/Yahweasel/craig). This is basically just a server wrapper around the
 cooking scripts.
 
+However, the cooking scripts have been slightly changed : 
++ Removed exclusive locking (only shared locks except for deletion), allowing multiple downloads at once.
+
 ## Usage
-
-The API is very simple:
-
 + GET /<recording_id> 
     + Description : Process the recording identified by *recording_id*. 
     + Query string arguments :
-        + format : Audio codec/extension wanted. **Default: Opus**
-        + container: Either *mix* (One audio file for the whole recording) or *aupzip* (one audio file per user). 
+        + format : Audio codec/extension wanted 
+            + copy : Copy the raw ogg streams for each users. This option isn't compatible with the mix format.
+            + oggflac
+            + aac
+            + he-aac : Be careful, this one is platform-dependant. See [limitations](#known-limitations--trivia).
+            + vorbis
+            + flac
+            + opus
+            + wav
+            + adpcm
+            + wav8
+            + mp3 : Widespread but not that great, opus is way better.   
+            + ra
+        **Default: Opus**
+        + container : "Box" to put the stream in
+            + *mix* (One audio file for the whole recording)
+            + *zip* (one audio file per user in a zip file)
+            + *ogg* (Multi-channels .ogg file)
+            + *matroska* (Multi-channels .mka file)
+            + *aupzip* (one audio file par user in a zipped Audacity project ) 
         **Default: mix**
     + Examples :
         + /872660673?format=mp3&container=aupzip will produce one mp3 file for each user (don't use mp3).
@@ -58,21 +76,22 @@ Running the server natively is a bit trickier, but not that difficult.
 
 #### Requirements
 
-The requirements are the same as Pandora's. 
+The requirements are nearly the same as Craig's. 
 You'll need all these installed : 
 + ffmpeg ( http://ffmpeg.org/ ) compiled with libopus support
 + flac ( https://xiph.org/flac/ )
 + oggenc ( https://xiph.org/vorbis/ )
 + opusenc ( http://opus-codec.org/ )
 + fdkaac ( https://github.com/nu774/fdkaac )
++ lame ( https://lame.sourceforge.io/ ) (mp3 support)
 + zip and unzip ( http://infozip.org/ )
 
 Quick install command: 
 ```bash
 # Debian-based distros
-sudo apt install ffmpeg flac vorbis-tools zip fdkaac
+sudo apt install ffmpeg flac vorbis-tools zip fdkaac lame
 # Red-Hat based distros (Yes there is really an extra hyphen)
-sudo dnf install ffmpeg flac vorbis-tools zip fdk-aac
+sudo dnf install ffmpeg flac vorbis-tools zip fdk-aac lame
 # Windows
 (Use Docker, the cooking script is a pure Bash script, you won't be able to run it anyway) 
 ```
@@ -123,6 +142,13 @@ With this, the server should be up and running !
 If you've read all this, congratulations. Now, seriously, just use Docker. 
 
 ## Configuration
+
+
+## Known limitations && Trivia
++ Matroska containers can't contain either AAC or HE-AAC. More precisely, they *should* but it doesn't work. 
+Thus, using AAC and Mastroska together is prevented by the server.
++ On Fedora (and probably every Red Hat distros), the fdk-aac package is "crippled" and doesn't support HE-AAC 
+out of the box.
 
 
 

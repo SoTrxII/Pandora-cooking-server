@@ -1,6 +1,7 @@
 import * as express from "express";
 import { ALLOWED_CONTAINERS, ALLOWED_FORMATS } from "./constants";
-import { Cooker } from "./cook";
+import { Cooker, CookerOptionsInvalidError } from "./cook";
+import { StatusCodes } from "http-status-codes";
 
 const app = express();
 const PORT = 3004;
@@ -26,17 +27,27 @@ app.get("/:id", (req, res) => {
   }
 
   console.log(`container: ${container}, format: ${format}, id: ${id}`);
-
+  const options = {
+    format: format as ALLOWED_FORMATS,
+    container: container as ALLOWED_CONTAINERS,
+    dynaudnorm: false,
+  };
   try {
-    Cooker.cook(id, {
-      format: format as ALLOWED_FORMATS,
-      container: container as ALLOWED_CONTAINERS,
-      dynaudnorm: false,
-    }).pipe(res);
+    const meta = Cooker.getFileMetadataFor(options);
+    res.setHeader("content-type", meta.mime);
+    res.setHeader(
+      "content-disposition",
+      `attachment; filename=${id}${meta.extension}`
+    );
+    Cooker.cook(id, options).pipe(res);
   } catch (e) {
+    if (e instanceof CookerOptionsInvalidError) {
+      res.status(StatusCodes.UNPROCESSABLE_ENTITY);
+      res.end(e.message);
+      return;
+    }
     console.error(e);
-    res.attachment(`audio`);
-    res.status(500);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR);
     res.end("Error while cooking recording with id: " + id);
   }
 });
@@ -49,7 +60,11 @@ app.delete("/:id", (req, res) => {
     return;
   }
   try {
-    Cooker.delete(id);
+    const hasBeenDeleted = Cooker.delete(id);
+    if (!hasBeenDeleted) {
+      res.status(401);
+      res.end("Cannot delete a recording while it's been downloaded.");
+    }
   } catch (e) {
     console.error(e);
     res.status(500);

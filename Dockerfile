@@ -14,7 +14,7 @@ FROM ubuntu:latest  as prod
 WORKDIR /app
 COPY --from=build /app/dist /app
 RUN apt update -y \
-    && DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y nodejs npm ffmpeg flac build-essential vorbis-tools zip fdkaac git at\
+    && DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y nodejs npm ffmpeg flac build-essential vorbis-tools zip fdkaac lame git at\
     && npm install -g pm2 modclean \
     && npm install --only=prod \
     && modclean -r \
