@@ -7,6 +7,9 @@ const app = express();
 const PORT = 3004;
 
 app.get("/:id", (req, res) => {
+  // Disable request time out because cook.sh can take a long time
+  req.setTimeout(0);
+  
   const id = Number(req.params.id);
   if (isNaN(id) || !Cooker.recordExists(id)) {
     res.status(404);
