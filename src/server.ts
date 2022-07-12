@@ -9,7 +9,7 @@ const PORT = 3004;
 app.get("/:id", (req, res) => {
   // Disable request time out because cook.sh can take a long time
   req.setTimeout(0);
-  
+
   const id = Number(req.params.id);
   if (isNaN(id) || !Cooker.recordExists(id)) {
     res.status(404);
@@ -19,12 +19,12 @@ app.get("/:id", (req, res) => {
   let container = req.query.container ?? ALLOWED_CONTAINERS.MIX;
   let format = req.query.format ?? ALLOWED_FORMATS.OPUS;
 
-  const containers = Object.values(ALLOWED_CONTAINERS) as String[];
+  const containers = Object.values(ALLOWED_CONTAINERS) as string[];
   if (!containers.includes(container.toString())) {
     container = ALLOWED_CONTAINERS.MIX;
   }
 
-  const formats = Object.values(ALLOWED_FORMATS) as String[];
+  const formats = Object.values(ALLOWED_FORMATS) as string[];
   if (!formats.includes(format.toString())) {
     format = ALLOWED_FORMATS.OPUS;
   }

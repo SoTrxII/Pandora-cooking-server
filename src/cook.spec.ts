@@ -562,13 +562,13 @@ describe("Cooking", () => {
     it(
       "aac",
       async () => {
-          await expect(
-              orderCooking(SAMPLE_ID, {
-                  dynaudnorm: false,
-                  container: ALLOWED_CONTAINERS.OGG,
-                  format: ALLOWED_FORMATS.AAC,
-              })
-          ).rejects.toThrow(CookerOptionsInvalidError);
+        await expect(
+          orderCooking(SAMPLE_ID, {
+            dynaudnorm: false,
+            container: ALLOWED_CONTAINERS.OGG,
+            format: ALLOWED_FORMATS.AAC,
+          })
+        ).rejects.toThrow(CookerOptionsInvalidError);
       },
       TIMEOUT
     );
