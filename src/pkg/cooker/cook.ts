@@ -1,4 +1,4 @@
-import { CookingOptions } from "./@types/cook";
+import { CookingOptions } from "./cook-api";
 import { resolve } from "path";
 import { existsSync, unlinkSync } from "fs";
 import { execSync, spawn } from "child_process";
@@ -7,7 +7,7 @@ import {
   ALLOWED_FORMATS,
   CONTAINERS_METADATA_MAP,
   FORMATS_METADATA_MAP,
-} from "./constants";
+} from "../../constants";
 
 export class CookerOptionsInvalidError extends Error {}
 export class Cooker {
@@ -21,10 +21,10 @@ export class Cooker {
   private static get BASE_PATH(): string {
     // Dev mode
     if (__dirname.includes("src")) {
-      return resolve(__dirname, "..");
+      return resolve(__dirname, "/../../..");
     }
-    // Prod Mode, cook.sh is at the same level
-    return __dirname;
+    // Prod Mode, there is no src
+    return resolve(__dirname, "/../..");
   }
 
   private static get RECORDINGS_PATH(): string {

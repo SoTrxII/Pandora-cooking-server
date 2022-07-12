@@ -1,6 +1,6 @@
 import * as express from "express";
 import { ALLOWED_CONTAINERS, ALLOWED_FORMATS } from "./constants";
-import { Cooker, CookerOptionsInvalidError } from "./cook";
+import { Cooker, CookerOptionsInvalidError } from "./pkg/cooker/cook";
 import { StatusCodes } from "http-status-codes";
 
 const app = express();

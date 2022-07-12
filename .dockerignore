@@ -3,5 +3,6 @@ node_modules
 *.flac
 *.mp3
 dist
+build
 rec
 package-lock.json

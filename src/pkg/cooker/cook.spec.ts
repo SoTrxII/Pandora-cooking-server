@@ -1,6 +1,6 @@
-import { ALLOWED_CONTAINERS, ALLOWED_FORMATS } from "./constants";
+import { ALLOWED_CONTAINERS, ALLOWED_FORMATS } from "../../constants";
 import { Cooker, CookerOptionsInvalidError } from "./cook";
-import { CookingOptions } from "./@types/cook";
+import { CookingOptions } from "./cook-api";
 
 /**
  * All tests. As the cooking code isn't mine, I don't exactly know what can go wrong.
