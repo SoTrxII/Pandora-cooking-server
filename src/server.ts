@@ -5,7 +5,78 @@ import { StatusCodes } from "http-status-codes";
 
 const app = express();
 const PORT = 3004;
-
+/**
+ * @openapi
+ *
+ * /{id}:
+ *   get:
+ *      description: Retrieve audio from an existing record
+ *      responses:
+ *       200:
+ *         description: Returns audio
+ *         content:
+ *          audio/*:
+ *            schema:
+ *              type: string
+ *              format: binary
+ *          application/octet-stream:
+ *            schema:
+ *              type: string
+ *              format: binary
+ *          application/zip:
+ *            schema:
+ *              type: string
+ *              format: binary
+ *       404:
+ *         description: Audio not found
+ *       422:
+ *         description: The provided container/format aren't compatible with each other
+ *       500:
+ *         description: Something went wrong
+ *      parameters:
+ *        - name: id
+ *          in: path
+ *          description: Record ID
+ *          required: true
+ *          schema:
+ *            type: integer
+ *            format: int32
+ *        - name: container
+ *          in: query
+ *          required: false
+ *          schema:
+ *            type: string
+ *            enum: [mix, aupzip, zip, matroska, ogg]
+ *            default: mix
+ *          description: >
+ *             File container:
+ *              * `mix` - One audio file for the whole recording
+ *              * `zip` - One audio file per user in a zip file
+ *              * `ogg` - Multi-channels .ogg file
+ *              * `matroska` - Multi-channels .mka file
+ *              * `aupzip` - one audio file par user in a zipped Audacity project
+ *        - name: format
+ *          in: query
+ *          required: false
+ *          schema:
+ *            type: string
+ *            enum: [copy, oggflac, vorbis, aac, heaac, flac, opus, wav, adpcm, wav8, mp3, ra]
+ *            default: opus
+ *          description: >
+ *             Audio codec/extension wanted:
+ *              * `copy` - Copy the raw ogg streams for each user. This option isn't compatible with the mix container.
+ *              * `oggflac`
+ *              * `aac`
+ *              * `heaac` - Be careful, this one is platform-dependant.
+ *              * `vorbis`
+ *              * `flac`
+ *              * `opus`
+ *              * `wav`
+ *              * `adpcm`
+ *              * `wav8`
+ *              * `mp3`
+ *              * `ra`
+ */
 app.get("/:id", (req, res) => {
   // Disable request time out because cook.sh can take a long time
   req.setTimeout(0);
@@ -55,6 +126,29 @@ app.get("/:id", (req, res) => {
   }
 });
 
+
+/**
+ * @openapi
+ *
+ * /{id}:
+ *   delete:
+ *      description: Delete all files from a recording
+ *      responses:
+ *       204:
+ *         description: File successfully deleted
+ *       401:
+ *         description: This record is currently being downloaded and can't be deleted
+ *       500:
+ *         description: Something went wrong
+ *      parameters:
+ *        - name: id
+ *          in: path
+ *          description: Record ID
+ *          required: true
+ *          schema:
+ *            type: integer
+ *            format: int32
+ */
 app.delete("/:id", (req, res) => {
   const id = Number(req.params.id);
   if (isNaN(id) || !Cooker.recordExists(id)) {
