@@ -24,7 +24,7 @@ export class Cooker {
       return resolve(__dirname, "/../../..");
     }
     // Prod Mode, there is no src
-    return resolve(__dirname, "/../..");
+    return __dirname + "/../..";
   }
 
   private static get RECORDINGS_PATH(): string {
