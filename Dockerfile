@@ -2,7 +2,6 @@
 FROM ubuntu:latest as build
 WORKDIR /app
 
-# Install node 18
 RUN apt update -y && DEBIAN_FRONTEND=noninteractive apt install -y curl \
     && curl -fsSL https://deb.nodesource.com/setup_18.x |  bash -
 
@@ -39,7 +38,9 @@ WORKDIR /app
 RUN \
     # Install Node 18
     apt update -y && DEBIAN_FRONTEND=noninteractive apt install -y curl \
-    && curl -fsSL https://deb.nodesource.com/setup_18.x |  bash - \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x |  bash -
+
+RUN \
     # Install runtime deps. This is mostly codecs used in cooking: \
     # Opus-tools -> Ogg format \
     # Nodejs \
@@ -50,9 +51,11 @@ RUN \
     # fdkaac -> LE-AAC \
     # lame -> mp3 \
     # at -> Job manager used by the cooking scripts
-    && DEBIAN_FRONTEND=noninteractive apt install -y nodejs ffmpeg flac vorbis-tools zip fdkaac lame at opus-tools \
+    DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y nodejs ffmpeg flac vorbis-tools zip fdkaac lame at opus-tools
+
+RUN \
     # Remove all extraneous packages
-    && DEBIAN_FRONTEND=noninteractive apt purge -y curl \
+    DEBIAN_FRONTEND=noninteractive apt purge -y curl \
     && apt clean autoclean && apt autoremove --yes \
     &&  rm -rf /root/.npm /usr/local/lib/node_modules/npm /var/lib/apt/lists/* /var/cache/apt/archives/*
 COPY --from=build /app/pack /app
