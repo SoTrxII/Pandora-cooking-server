@@ -21,8 +21,11 @@ dist/*
 # Ignore mdules
 node_modules
 
-#Ignore dev specific files
+# Ignore dev specific files
 .env
 yarn-error.log
 .idea
 openapi.json
+
+# Ignore coverage
+coverage

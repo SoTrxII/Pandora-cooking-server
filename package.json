@@ -26,6 +26,7 @@
     "zlib-sync": "^0.1.7"
   },
   "devDependencies": {
+    "@fluffy-spoon/substitute": "^1.208.0",
     "@types/jest": "^28.1.4",
     "@types/node": "^18.0.3",
     "@typescript-eslint/eslint-plugin": "^5.30.6",

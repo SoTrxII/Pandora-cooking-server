@@ -5,7 +5,7 @@ import IClientBinding from "@dapr/dapr/interfaces/Client/IClientBinding";
 import { join } from "path";
 
 describe("Dapr Object storage adapter", () => {
-  const sampleFile = join(__dirname, "../../assets/welcome.opus");
+  const sampleFile = join(__dirname, "../../assets/872660673.ogg.data");
 
   const adapter = new DaprObjectStorageAdapter(
     Substitute.for<IClientBinding>(),
