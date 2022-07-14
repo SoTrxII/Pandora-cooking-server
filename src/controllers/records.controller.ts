@@ -3,15 +3,22 @@ import {
   controller,
   httpDelete,
   httpGet,
+  interfaces,
   request,
   response,
 } from "inversify-express-utils";
 import { Cooker, CookerOptionsInvalidError } from "../pkg/cooker/cook";
 import { ALLOWED_CONTAINERS, ALLOWED_FORMATS } from "../constants";
 import { StatusCodes } from "http-status-codes";
+import { inject } from "inversify";
+import { TYPES } from "../types";
+import { IRecordsService } from "../services/records/records.service.api";
 
 @controller("/")
-export class RecordsController {
+export class RecordsController implements interfaces.Controller {
+  constructor(
+    @inject(TYPES.ServiceRecords) private recordsService: IRecordsService
+  ) {}
   /**
    * @openapi
    *
@@ -93,7 +100,7 @@ export class RecordsController {
     req.setTimeout(0);
 
     const id = Number(req.params.id);
-    if (isNaN(id) || !Cooker.recordExists(id)) {
+    if (isNaN(id) || !this.recordsService.exists(id)) {
       res.status(404);
       res.end(`Record ${req.params.id} doesn't exists !`);
       return;
@@ -118,14 +125,14 @@ export class RecordsController {
       dynaudnorm: false,
     };
     try {
-      const meta = Cooker.getFileMetadataFor(options);
+      const meta = this.recordsService.getMetadata(options);
       res.setHeader("content-type", meta.mime);
       res.setHeader(
         "content-disposition",
         `attachment; filename=${id}${meta.extension}`
       );
       // Workaround for https://github.com/inversify/InversifyJS/issues/850
-      return () => Cooker.cook(id, options).pipe(res);
+      return () => this.recordsService.stream(id, options).pipe(res);
     } catch (e) {
       if (e instanceof CookerOptionsInvalidError) {
         res.status(StatusCodes.UNPROCESSABLE_ENTITY);
@@ -163,13 +170,13 @@ export class RecordsController {
   @httpDelete(":id")
   delete(@request() req: express.Request, @response() res: express.Response) {
     const id = Number(req.params.id);
-    if (isNaN(id) || !Cooker.recordExists(id)) {
+    if (isNaN(id) || !this.recordsService.exists(id)) {
       res.status(404);
       res.end(`Record ${req.params.id} doesn't exists !`);
       return;
     }
     try {
-      const hasBeenDeleted = Cooker.delete(id);
+      const hasBeenDeleted = this.recordsService.delete(id);
       if (!hasBeenDeleted) {
         res.status(401);
         res.end("Cannot delete a recording while it's been downloaded.");

@@ -1,4 +1,4 @@
-import { CookingOptions } from "./cook-api";
+import { CookingOptions, ICooking } from "./cook-api";
 import { resolve } from "path";
 import { existsSync, unlinkSync } from "fs";
 import { execSync, spawn } from "child_process";
@@ -8,9 +8,12 @@ import {
   CONTAINERS_METADATA_MAP,
   FORMATS_METADATA_MAP,
 } from "../../constants";
+import { Readable } from "stream";
+import { injectable } from "inversify";
 
 export class CookerOptionsInvalidError extends Error {}
-export class Cooker {
+@injectable()
+export class Cooker implements ICooking {
   private static SUFFIXES = [
     ".ogg.data",
     ".ogg.header1",
@@ -31,7 +34,7 @@ export class Cooker {
     return `${Cooker.BASE_PATH}/rec`;
   }
 
-  static recordExists(id: number): boolean {
+  recordExists(id: number): boolean {
     const fileBase = `${Cooker.RECORDINGS_PATH}/${id}`;
     return Cooker.SUFFIXES.map((s) => `${fileBase}${s}`).every(existsSync);
   }
@@ -87,7 +90,7 @@ export class Cooker {
     }
   }
 
-  static cook(id: number, options: CookingOptions) {
+  cook(id: number, options: CookingOptions): Readable {
     Cooker.validateOptions(options);
     const cookingProcess = spawn(
       resolve(Cooker.BASE_PATH, `./cook.sh`),
@@ -100,7 +103,7 @@ export class Cooker {
     return cookingProcess.stdout;
   }
 
-  static getFileMetadataFor(options: CookingOptions) {
+  getFileMetadataFor(options: CookingOptions) {
     if (CONTAINERS_METADATA_MAP.has(options.container)) {
       return CONTAINERS_METADATA_MAP.get(options.container);
     }
@@ -125,7 +128,7 @@ export class Cooker {
     }
   }
 
-  static delete(id: number): boolean {
+  delete(id: number): boolean {
     const fileBase = `${Cooker.RECORDINGS_PATH}/${id}`;
     // This isn't a pretty solution, flock() is not compatible with every file system
     const isLocked = Cooker.getExclusiveLock(fileBase);

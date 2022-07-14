@@ -11,6 +11,10 @@ import { ExternalObjectStore } from "./pkg/object-store/external-objet-store";
 import { ecsLogger } from "./pkg/logger/logger-ecs";
 import { plainTextLogger } from "./pkg/logger/logger-plain-text";
 import { ILogger } from "./pkg/logger/logger-api";
+import { ICooking } from "./pkg/cooker/cook-api";
+import { Cooker } from "./pkg/cooker/cook";
+import { IRecordsService } from "./services/records/records.service.api";
+import { RecordsService } from "./services/records/records.service";
 
 export const container = new Container();
 
@@ -36,3 +40,13 @@ if (objComponent) {
 const logger =
   process.env.NODE_ENV === "production" ? ecsLogger : plainTextLogger;
 container.bind<ILogger>(TYPES.Logger).toConstantValue(logger);
+
+/**
+ * Cooking, handle record and calls to the cooking script
+ */
+container.bind<ICooking>(TYPES.Cooking).to(Cooker);
+
+/**
+ * Services
+ */
+container.bind<IRecordsService>(TYPES.ServiceRecords).to(RecordsService);
