@@ -15,6 +15,7 @@ import { ICooking } from "./pkg/cooker/cook-api";
 import { Cooker } from "./pkg/cooker/cook";
 import { IRecordsService } from "./services/records/records.service.api";
 import { RecordsService } from "./services/records/records.service";
+import { join } from "path";
 
 export const container = new Container();
 
@@ -44,7 +45,9 @@ container.bind<ILogger>(TYPES.Logger).toConstantValue(logger);
 /**
  * Cooking, handle record and calls to the cooking script
  */
-container.bind<ICooking>(TYPES.Cooking).to(Cooker);
+container
+  .bind<ICooking>(TYPES.Cooking)
+  .toConstantValue(new Cooker(join(__dirname, "rec"), __dirname));
 
 /**
  * Services

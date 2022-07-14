@@ -5,7 +5,7 @@ import {
   ICooking,
   IRecordMetadata,
 } from "./cook-api";
-import { resolve } from "path";
+import { join, resolve } from "path";
 import { existsSync, unlinkSync } from "fs";
 import { execSync, spawn } from "child_process";
 import { Readable } from "stream";
@@ -56,21 +56,17 @@ export class Cooker implements ICooking {
     ".ogg.users",
   ];
 
-  private static get BASE_PATH(): string {
-    // Dev mode
-    if (__dirname.includes("src")) {
-      return resolve(__dirname, "/../../..");
-    }
-    // Prod Mode, there is no src
-    return __dirname + "/../..";
-  }
-
-  private static get RECORDINGS_PATH(): string {
-    return `${Cooker.BASE_PATH}/rec`;
-  }
+  /**
+   * @param recordingsDir Path to find the raw Pandora/Craig recordings
+   * @param cookingScriptPath Path to find the cooking script
+   */
+  constructor(
+    private readonly recordingsDir: string,
+    private readonly cookingScriptPath: string
+  ) {}
 
   exists(id: number): boolean {
-    const fileBase = `${Cooker.RECORDINGS_PATH}/${id}`;
+    const fileBase = join(this.recordingsDir, String(id));
     return Cooker.SUFFIXES.map((s) => `${fileBase}${s}`).every(existsSync);
   }
 
@@ -128,7 +124,7 @@ export class Cooker implements ICooking {
   cook(id: number, options: ICookingOptions): Readable {
     this.validateOptions(options);
     const cookingProcess = spawn(
-      resolve(Cooker.BASE_PATH, `./cook.sh`),
+      resolve(this.cookingScriptPath, `./cook.sh`),
       [String(id), options.format, options.container],
       {
         cwd: __dirname,
@@ -164,7 +160,7 @@ export class Cooker implements ICooking {
   }
 
   delete(id: number): boolean {
-    const fileBase = `${Cooker.RECORDINGS_PATH}/${id}`;
+    const fileBase = join(this.recordingsDir, String(id));
     // This isn't a pretty solution, flock() is not compatible with every file system
     const isLocked = this.getExclusiveLock(fileBase);
     if (isLocked)
