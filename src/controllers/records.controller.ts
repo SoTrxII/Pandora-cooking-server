@@ -104,7 +104,7 @@ export class RecordsController implements interfaces.Controller {
 
     const id = Number(req.params.id);
     if (isNaN(id) || !this.recordsService.exists(id)) {
-      res.status(404);
+      res.status(StatusCodes.NOT_FOUND);
       this.logger.info(
         `Request for record with id "${req.params.id}" was denied : No such record`
       );
@@ -184,7 +184,7 @@ export class RecordsController implements interfaces.Controller {
     );
     const id = Number(req.params.id);
     if (isNaN(id) || !this.recordsService.exists(id)) {
-      res.status(404);
+      res.status(StatusCodes.NOT_FOUND);
       this.logger.info(
         `Deletion request for record with ID ${req.params.id} was denied : No such record`
       );
@@ -194,7 +194,7 @@ export class RecordsController implements interfaces.Controller {
     try {
       const hasBeenDeleted = this.recordsService.delete(id);
       if (!hasBeenDeleted) {
-        res.status(401);
+        res.status(StatusCodes.FORBIDDEN);
         this.logger.info(
           `Deletion request for record with ID ${req.params.id} was denied : Record still being downloaded`
         );
@@ -205,10 +205,10 @@ export class RecordsController implements interfaces.Controller {
         `Unexpected error for deletion request of record with id ${req.params.id}`,
         { err: e }
       );
-      res.status(500);
+      res.status(StatusCodes.INTERNAL_SERVER_ERROR);
       res.end("Could not delete recording wth id : " + id);
       return;
     }
-    res.status(200);
+    res.status(StatusCodes.OK);
   }
 }
