@@ -124,6 +124,7 @@ export class Cooker {
       return false;
     }
   }
+
   static delete(id: number): boolean {
     const fileBase = `${Cooker.RECORDINGS_PATH}/${id}`;
     // This isn't a pretty solution, flock() is not compatible with every file system
