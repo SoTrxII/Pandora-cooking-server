@@ -17,7 +17,7 @@ RUN npm install
 COPY . /app/
 
 # Converts all .sh script into Linux style line ending
-RUN dos2unix cook.sh cook/*.sh
+RUN dos2unix cook.sh cook/*
 # Compile all cooking .c utilities
 RUN cd /app/cook && for i in *.c; do gcc -O3 -o ${i%.c} $i; done
 
