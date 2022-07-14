@@ -13,11 +13,13 @@ import { StatusCodes } from "http-status-codes";
 import { inject } from "inversify";
 import { TYPES } from "../types";
 import { IRecordsService } from "../services/records/records.service.api";
+import { ILogger } from "../pkg/logger/logger-api";
 
 @controller("/")
 export class RecordsController implements interfaces.Controller {
   constructor(
-    @inject(TYPES.ServiceRecords) private recordsService: IRecordsService
+    @inject(TYPES.ServiceRecords) private recordsService: IRecordsService,
+    @inject(TYPES.Logger) private logger: ILogger
   ) {}
   /**
    * @openapi
@@ -98,13 +100,18 @@ export class RecordsController implements interfaces.Controller {
   ) {
     // Disable request time out because cook.sh can take a long time
     req.setTimeout(0);
+    this.logger.info(`New incoming request with param id "${req.params.id}"`);
 
     const id = Number(req.params.id);
     if (isNaN(id) || !this.recordsService.exists(id)) {
       res.status(404);
+      this.logger.info(
+        `Request for record with id "${req.params.id}" was denied : No such record`
+      );
       res.end(`Record ${req.params.id} doesn't exists !`);
       return;
     }
+
     let container = req.query.container ?? ALLOWED_CONTAINERS.MIX;
     let format = req.query.format ?? ALLOWED_FORMATS.OPUS;
 
@@ -118,7 +125,7 @@ export class RecordsController implements interfaces.Controller {
       format = ALLOWED_FORMATS.OPUS;
     }
 
-    console.log(`container: ${container}, format: ${format}, id: ${id}`);
+    this.logger.debug(`container: ${container}, format: ${format}, id: ${id}`);
     const options = {
       format: format as ALLOWED_FORMATS,
       container: container as ALLOWED_CONTAINERS,
@@ -136,11 +143,14 @@ export class RecordsController implements interfaces.Controller {
     } catch (e) {
       if (e instanceof CookerOptionsInvalidError) {
         res.status(StatusCodes.UNPROCESSABLE_ENTITY);
+        this.logger.warn(`Aborting record handling, invalid set of options`, {
+          err: e,
+        });
         res.end(e.message);
         return;
       }
-      console.error(e);
       res.status(StatusCodes.INTERNAL_SERVER_ERROR);
+      this.logger.error(`Fatal error occurred. Error: `, { err: e });
       res.end("Error while cooking recording with id: " + id);
     }
   }
@@ -169,9 +179,15 @@ export class RecordsController implements interfaces.Controller {
    */
   @httpDelete(":id")
   delete(@request() req: express.Request, @response() res: express.Response) {
+    this.logger.info(
+      `Incoming request to delete record with ID ${req.params.id}`
+    );
     const id = Number(req.params.id);
     if (isNaN(id) || !this.recordsService.exists(id)) {
       res.status(404);
+      this.logger.info(
+        `Deletion request for record with ID ${req.params.id} was denied : No such record`
+      );
       res.end(`Record ${req.params.id} doesn't exists !`);
       return;
     }
@@ -179,12 +195,19 @@ export class RecordsController implements interfaces.Controller {
       const hasBeenDeleted = this.recordsService.delete(id);
       if (!hasBeenDeleted) {
         res.status(401);
+        this.logger.info(
+          `Deletion request for record with ID ${req.params.id} was denied : Record still being downloaded`
+        );
         res.end("Cannot delete a recording while it's been downloaded.");
       }
     } catch (e) {
-      console.error(e);
+      this.logger.error(
+        `Unexpected error for deletion request of record with id ${req.params.id}`,
+        { err: e }
+      );
       res.status(500);
       res.end("Could not delete recording wth id : " + id);
+      return;
     }
     res.status(200);
   }
