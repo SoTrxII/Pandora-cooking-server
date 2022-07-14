@@ -1,19 +1,53 @@
-import { CookingOptions, ICooking } from "./cook-api";
-import { resolve } from "path";
-import { existsSync, unlinkSync } from "fs";
-import { execSync, spawn } from "child_process";
 import {
   ALLOWED_CONTAINERS,
   ALLOWED_FORMATS,
-  CONTAINERS_METADATA_MAP,
-  FORMATS_METADATA_MAP,
-} from "../../constants";
+  ICookingOptions,
+  ICooking,
+  IRecordMetadata,
+} from "./cook-api";
+import { resolve } from "path";
+import { existsSync, unlinkSync } from "fs";
+import { execSync, spawn } from "child_process";
 import { Readable } from "stream";
 import { injectable } from "inversify";
 
 export class CookerOptionsInvalidError extends Error {}
+
 @injectable()
 export class Cooker implements ICooking {
+  /**
+   * All files metadata for a given container, except for mix
+   */
+  static readonly CONTAINERS_METADATA_MAP = new Map([
+    [
+      ALLOWED_CONTAINERS.AUPZIP,
+      { extension: ".aup.zip", mime: "application/zip" },
+    ],
+    [ALLOWED_CONTAINERS.ZIP, { extension: ".zip", mime: "application/zip" }],
+    [
+      ALLOWED_CONTAINERS.MATROSKA,
+      { extension: ".mkv", mime: "video/x-matroska" },
+    ],
+    [ALLOWED_CONTAINERS.OGG, { extension: ".ogg", mime: "audio/ogg" }],
+  ]);
+
+  /**
+   * When using a "mix" container, the resulting file extension depends on the audio stream.
+   */
+  static readonly FORMATS_METADATA_MAP = new Map([
+    [ALLOWED_FORMATS.HEAAC, { extension: ".aac", mime: "audio/aac" }],
+    [ALLOWED_FORMATS.AAC, { extension: ".aac", mime: "audio/aac" }],
+    [ALLOWED_FORMATS.MP3, { extension: ".mp3", mime: "audio/mp3" }],
+    [ALLOWED_FORMATS.WAV, { extension: ".wav", mime: "audio/x-wav" }],
+    [ALLOWED_FORMATS.WAV8, { extension: ".wav", mime: "audio/x-wav" }],
+    [ALLOWED_FORMATS.ADPCM, { extension: ".raw", mime: "audio/x-wav" }],
+    [ALLOWED_FORMATS.RA, { extension: ".ra", mime: "audio/vnd.rn-realaudio" }],
+    [ALLOWED_FORMATS.OPUS, { extension: ".ogg", mime: "audio/ogg" }],
+    [ALLOWED_FORMATS.VORBIS, { extension: ".ogg", mime: "audio/vorbis" }],
+    [ALLOWED_FORMATS.FLAC, { extension: ".flac", mime: "audio/flac" }],
+    [ALLOWED_FORMATS.OGGFLAC, { extension: ".ogg", mime: "audio/ogg" }],
+  ]);
+
   private static SUFFIXES = [
     ".ogg.data",
     ".ogg.header1",
@@ -21,6 +55,7 @@ export class Cooker implements ICooking {
     ".ogg.info",
     ".ogg.users",
   ];
+
   private static get BASE_PATH(): string {
     // Dev mode
     if (__dirname.includes("src")) {
@@ -34,12 +69,12 @@ export class Cooker implements ICooking {
     return `${Cooker.BASE_PATH}/rec`;
   }
 
-  recordExists(id: number): boolean {
+  exists(id: number): boolean {
     const fileBase = `${Cooker.RECORDINGS_PATH}/${id}`;
     return Cooker.SUFFIXES.map((s) => `${fileBase}${s}`).every(existsSync);
   }
 
-  static validateOptions(options: CookingOptions): void {
+  validateOptions(options: ICookingOptions): void {
     // Copy just copies the entire temp dir, it can't be post-processed
     if (
       options.format === ALLOWED_FORMATS.COPY &&
@@ -90,8 +125,8 @@ export class Cooker implements ICooking {
     }
   }
 
-  cook(id: number, options: CookingOptions): Readable {
-    Cooker.validateOptions(options);
+  cook(id: number, options: ICookingOptions): Readable {
+    this.validateOptions(options);
     const cookingProcess = spawn(
       resolve(Cooker.BASE_PATH, `./cook.sh`),
       [String(id), options.format, options.container],
@@ -103,13 +138,13 @@ export class Cooker implements ICooking {
     return cookingProcess.stdout;
   }
 
-  getFileMetadataFor(options: CookingOptions) {
-    if (CONTAINERS_METADATA_MAP.has(options.container)) {
-      return CONTAINERS_METADATA_MAP.get(options.container);
+  getFileMetadataFor(options: ICookingOptions): IRecordMetadata {
+    if (Cooker.CONTAINERS_METADATA_MAP.has(options.container)) {
+      return Cooker.CONTAINERS_METADATA_MAP.get(options.container);
     }
     // The container is "mix", check the file extension at the format level
-    if (FORMATS_METADATA_MAP.has(options.format)) {
-      return FORMATS_METADATA_MAP.get(options.format);
+    if (Cooker.FORMATS_METADATA_MAP.has(options.format)) {
+      return Cooker.FORMATS_METADATA_MAP.get(options.format);
     }
     // Unknown format, fallback to the generic octet-stream
     return {
@@ -118,7 +153,7 @@ export class Cooker implements ICooking {
     };
   }
 
-  static getExclusiveLock(fileBase: string): boolean {
+  getExclusiveLock(fileBase: string): boolean {
     try {
       execSync(`exec 9< "${fileBase}.ogg.data" && (flock -n 9 || exit 1)`);
       return true;
@@ -131,7 +166,7 @@ export class Cooker implements ICooking {
   delete(id: number): boolean {
     const fileBase = `${Cooker.RECORDINGS_PATH}/${id}`;
     // This isn't a pretty solution, flock() is not compatible with every file system
-    const isLocked = Cooker.getExclusiveLock(fileBase);
+    const isLocked = this.getExclusiveLock(fileBase);
     if (isLocked)
       Cooker.SUFFIXES.map((s) => `${fileBase}${s}`).forEach(unlinkSync);
     return isLocked;

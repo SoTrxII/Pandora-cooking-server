@@ -2,10 +2,9 @@ import { inject, injectable, optional } from "inversify";
 import { TYPES } from "../../types";
 import { ILogger } from "../../pkg/logger/logger-api";
 import { IObjectStore } from "../../pkg/object-store/objet-store-api";
-import { CookingOptions, ICooking } from "../../pkg/cooker/cook-api";
+import { ICookingOptions, ICooking } from "../../pkg/cooker/cook-api";
 import { Readable } from "stream";
 import { IRecordsService } from "./records.service.api";
-import { ALLOWED_CONTAINERS, ALLOWED_FORMATS } from "../../constants";
 
 @injectable()
 export class RecordsService implements IRecordsService {
@@ -15,15 +14,15 @@ export class RecordsService implements IRecordsService {
     @inject(TYPES.Cooking) private cooker: ICooking
   ) {}
 
-  stream(id: number, options: CookingOptions): Readable {
+  stream(id: number, options: ICookingOptions): Readable {
     return this.cooker.cook(id, options);
   }
 
   exists(id: number): boolean {
-    return this.cooker.recordExists(id);
+    return this.cooker.exists(id);
   }
 
-  getMetadata(options: CookingOptions) {
+  getMetadata(options: ICookingOptions) {
     return this.cooker.getFileMetadataFor(options);
   }
 

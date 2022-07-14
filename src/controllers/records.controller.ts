@@ -8,12 +8,12 @@ import {
   response,
 } from "inversify-express-utils";
 import { Cooker, CookerOptionsInvalidError } from "../pkg/cooker/cook";
-import { ALLOWED_CONTAINERS, ALLOWED_FORMATS } from "../constants";
 import { StatusCodes } from "http-status-codes";
 import { inject } from "inversify";
 import { TYPES } from "../types";
 import { IRecordsService } from "../services/records/records.service.api";
 import { ILogger } from "../pkg/logger/logger-api";
+import { ALLOWED_CONTAINERS, ALLOWED_FORMATS } from "../pkg/cooker/cook-api";
 
 @controller("/")
 export class RecordsController implements interfaces.Controller {

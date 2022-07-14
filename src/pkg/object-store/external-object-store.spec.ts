@@ -6,7 +6,7 @@ import { DaprObjectStorageAdapter } from "./dapr-object-storage-adapter";
 import { ObjectStoreError } from "./objet-store-api";
 
 describe("External Object Store", () => {
-  const sampleFile = join(__dirname, "../../assets/welcome.opus");
+  const sampleFile = join(__dirname, "../../assets/872660673.ogg.data");
   const sampleKey = basename(sampleFile);
   const notAFile = join(__dirname, "../../assets/idonotexist.opus");
 
