@@ -10,7 +10,7 @@ const options = {
       version: "1.0.0",
     },
   },
-  apis: ["./src/*.ts"], // files containing annotations as above
+  apis: ["./src/controllers/*.ts"], // files containing annotations as above
 };
 
 const openapiSpecification = swaggerJsdoc(options);

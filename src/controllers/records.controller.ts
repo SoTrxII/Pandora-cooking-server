@@ -102,6 +102,7 @@ export class RecordsController implements interfaces.Controller {
     req.setTimeout(0);
     this.logger.info(`New incoming request with param id "${req.params.id}"`);
 
+    // Path check : ID must be defined and have a corresponding record
     const id = Number(req.params.id);
     if (isNaN(id) || !this.recordsService.exists(id)) {
       res.status(StatusCodes.NOT_FOUND);
@@ -112,6 +113,10 @@ export class RecordsController implements interfaces.Controller {
       return;
     }
 
+    // Optional args check : container and format
+    // All containers and format aren't compatible with each other
+    // but it would be overkill to check that too
+    // If not defined, fallback to a mixed opus single track
     let container = req.query.container ?? ALLOWED_CONTAINERS.MIX;
     let format = req.query.format ?? ALLOWED_FORMATS.OPUS;
 
@@ -126,6 +131,9 @@ export class RecordsController implements interfaces.Controller {
     }
 
     this.logger.debug(`container: ${container}, format: ${format}, id: ${id}`);
+
+    // Stream back the record as an audio file.
+    // We can try and guess the mime with the chosen format and container
     const options = {
       format: format as ALLOWED_FORMATS,
       container: container as ALLOWED_CONTAINERS,
@@ -141,6 +149,7 @@ export class RecordsController implements interfaces.Controller {
       // Workaround for https://github.com/inversify/InversifyJS/issues/850
       return () => this.recordsService.stream(id, options).pipe(res);
     } catch (e) {
+      // Format and container aren't compatible
       if (e instanceof CookerOptionsInvalidError) {
         res.status(StatusCodes.UNPROCESSABLE_ENTITY);
         this.logger.warn(`Aborting record handling, invalid set of options`, {
@@ -149,6 +158,7 @@ export class RecordsController implements interfaces.Controller {
         res.end(e.message);
         return;
       }
+      // Cooking script errored in some way
       res.status(StatusCodes.INTERNAL_SERVER_ERROR);
       this.logger.error(`Fatal error occurred. Error: `, { err: e });
       res.end("Error while cooking recording with id: " + id);
@@ -182,6 +192,7 @@ export class RecordsController implements interfaces.Controller {
     this.logger.info(
       `Incoming request to delete record with ID ${req.params.id}`
     );
+    // Path check, id must be defined
     const id = Number(req.params.id);
     if (isNaN(id) || !this.recordsService.exists(id)) {
       res.status(StatusCodes.NOT_FOUND);
@@ -191,6 +202,9 @@ export class RecordsController implements interfaces.Controller {
       res.end(`Record ${req.params.id} doesn't exists !`);
       return;
     }
+
+    // We cannot allow deletion if a record is being processed
+    // Although it shouldn't be a problem on Linux, it may be cooking
     try {
       const hasBeenDeleted = this.recordsService.delete(id);
       if (!hasBeenDeleted) {
