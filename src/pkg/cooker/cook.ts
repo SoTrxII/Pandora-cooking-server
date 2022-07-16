@@ -61,7 +61,7 @@ export class Cooker implements ICooking {
    * @param cookingScriptPath Path to find the cooking script
    */
   constructor(
-    private readonly recordingsDir: string,
+    public readonly recordingsDir: string,
     private readonly cookingScriptPath: string
   ) {}
 
@@ -74,7 +74,8 @@ export class Cooker implements ICooking {
     // Copy just copies the entire temp dir, it can't be post-processed
     if (
       options.format === ALLOWED_FORMATS.COPY &&
-      options.container !== ALLOWED_CONTAINERS.AUPZIP
+      options.container !== ALLOWED_CONTAINERS.AUPZIP &&
+      options.container !== ALLOWED_CONTAINERS.ZIP
     ) {
       throw new CookerOptionsInvalidError(
         `Format ${ALLOWED_FORMATS.COPY} can only produce zip files ! Please select ${ALLOWED_CONTAINERS.AUPZIP} container!`
@@ -130,6 +131,7 @@ export class Cooker implements ICooking {
         cwd: __dirname,
       }
     );
+    // As stdout is used to output binary data, stderr is used to output logs
     cookingProcess.stderr.on("data", (data) => console.log(data.toString()));
     return cookingProcess.stdout;
   }
@@ -162,6 +164,7 @@ export class Cooker implements ICooking {
   delete(id: number): boolean {
     const fileBase = join(this.recordingsDir, String(id));
     // This isn't a pretty solution, flock() is not compatible with every file system
+    // But as the cooking scripts are sh scripts, this is good enough
     const isLocked = this.getExclusiveLock(fileBase);
     if (isLocked)
       Cooker.SUFFIXES.map((s) => `${fileBase}${s}`).forEach(unlinkSync);

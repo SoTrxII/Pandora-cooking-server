@@ -83,4 +83,9 @@ export interface ICooking {
    * @param filePath
    */
   getExclusiveLock(filePath: string): boolean;
+
+  /**
+   * Records base directory
+   */
+  readonly recordingsDir: string;
 }

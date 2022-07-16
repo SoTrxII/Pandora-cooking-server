@@ -104,7 +104,7 @@ export class RecordsController implements interfaces.Controller {
 
     // Path check : ID must be defined and have a corresponding record
     const id = Number(req.params.id);
-    if (isNaN(id) || !this.recordsService.exists(id)) {
+    if (isNaN(id) || !(await this.recordsService.exists(id))) {
       res.status(StatusCodes.NOT_FOUND);
       this.logger.info(
         `Request for record with id "${req.params.id}" was denied : No such record`
@@ -146,8 +146,9 @@ export class RecordsController implements interfaces.Controller {
         "content-disposition",
         `attachment; filename=${id}${meta.extension}`
       );
-      // Workaround for https://github.com/inversify/InversifyJS/issues/850
-      return () => this.recordsService.stream(id, options).pipe(res);
+      // Workaround for https://github.com/inversify/InversifyJS/issues/850a
+      const stream = await this.recordsService.stream(id, options);
+      return () => stream.pipe(res);
     } catch (e) {
       // Format and container aren't compatible
       if (e instanceof CookerOptionsInvalidError) {
@@ -188,13 +189,16 @@ export class RecordsController implements interfaces.Controller {
    *            format: int32
    */
   @httpDelete(":id")
-  delete(@request() req: express.Request, @response() res: express.Response) {
+  async delete(
+    @request() req: express.Request,
+    @response() res: express.Response
+  ) {
     this.logger.info(
       `Incoming request to delete record with ID ${req.params.id}`
     );
     // Path check, id must be defined
     const id = Number(req.params.id);
-    if (isNaN(id) || !this.recordsService.exists(id)) {
+    if (isNaN(id) || !(await this.recordsService.exists(id))) {
       res.status(StatusCodes.NOT_FOUND);
       this.logger.info(
         `Deletion request for record with ID ${req.params.id} was denied : No such record`
@@ -206,13 +210,14 @@ export class RecordsController implements interfaces.Controller {
     // We cannot allow deletion if a record is being processed
     // Although it shouldn't be a problem on Linux, it may be cooking
     try {
-      const hasBeenDeleted = this.recordsService.delete(id);
+      const hasBeenDeleted = await this.recordsService.delete(id);
       if (!hasBeenDeleted) {
         res.status(StatusCodes.FORBIDDEN);
         this.logger.info(
           `Deletion request for record with ID ${req.params.id} was denied : Record still being downloaded`
         );
         res.end("Cannot delete a recording while it's been downloaded.");
+        return;
       }
     } catch (e) {
       this.logger.error(
