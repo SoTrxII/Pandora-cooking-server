@@ -15,9 +15,10 @@ RUN DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y nodejs
 COPY package.json /app/
 RUN npm install
 COPY . /app/
+COPY start.sh /app
 
 # Converts all .sh script into Linux style line ending
-RUN dos2unix cook.sh cook/*
+RUN dos2unix cook.sh cook/* start.sh
 # Compile all cooking .c utilities
 RUN cd /app/cook && for i in *.c; do gcc -O3 -o ${i%.c} $i; done
 
@@ -29,7 +30,7 @@ RUN npm prune production
 RUN npm install -g modclean && modclean -r
 
 # "Pack" the app, allowing to copy both the transpiled app and node_modules into one copy step
-RUN mkdir -p /app/pack && mv /app/dist/* /app/pack/ && mv /app/node_modules /app/pack/
+RUN mkdir -p /app/pack && mv /app/dist/* /app/pack/ && mv /app/node_modules /app/pack/ && mv /app/start.sh /app/pack/
 
 
 # Prod stage, the fewest layer the best
@@ -60,5 +61,4 @@ RUN \
     &&  rm -rf /root/.npm /usr/local/lib/node_modules/npm /var/lib/apt/lists/* /var/cache/apt/archives/*
 COPY --from=build /app/pack /app
 EXPOSE 3004
-COPY start.sh /app/start.sh
 CMD ["/app/start.sh"]
