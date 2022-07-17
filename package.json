@@ -1,6 +1,6 @@
 {
-  "name": "craig-as-a-service",
-  "version": "1.0.0",
+  "name": "cooking-server",
+  "version": "2.0.0",
   "main": "index.js",
   "license": "ISC",
   "scripts": {
@@ -10,6 +10,7 @@
     "doc": "node ./generate-documentation.js",
     "build": "tsc && npx shx cp package.json dist/package.json",
     "postbuild": "npx shx mkdir -p dist/rec && npx shx cp -r src/assets/* dist/rec/ && npx shx cp -r cook dist/cook && npx shx cp cook.sh dist/cook.sh",
+    "start:dapr": "dapr run --dapr-http-max-request-size 300 --app-id cooking-server --dapr-http-port 3500 --components-path ./dapr/components",
     "start:dev": "npm run build && node -r dotenv-safe/config dist/server.js "
   },
   "dependencies": {
