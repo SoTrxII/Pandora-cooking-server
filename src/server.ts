@@ -3,9 +3,12 @@ import "./controllers/records.controller";
 
 import { container } from "./inversify.config";
 import { InversifyExpressServer } from "inversify-express-utils";
+import { ILogger } from "./pkg/logger/logger-api";
+import { TYPES } from "./types";
 const server = new InversifyExpressServer(container);
 const app = server.build();
 const PORT = 3004;
 app.listen(PORT, () => {
-  console.log(`⚡️[server]: Server is running at port ${PORT}`);
+  const logger = container.get<ILogger>(TYPES.Logger);
+  logger.info(`⚡️[server]: Server is running at port ${PORT}`);
 });
