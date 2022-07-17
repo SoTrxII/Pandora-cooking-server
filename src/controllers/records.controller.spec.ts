@@ -100,6 +100,24 @@ describe("Records Controller", () => {
       });
       expect(name.length).toBeLessThan(FILENAME_LIMIT);
     });
+
+    it("Pandora v1 naming", () => {
+      const ctrl = getMockService();
+      const startTimeOldFormat = new Date().toUTCString();
+      const startTime = String(new Date(startTimeOldFormat).getTime());
+      const rId = 1;
+      const ext = ".test";
+      const channelOldFormat = "test#1111";
+      const channel = "test";
+      const name = ctrl.formatFileName(rId, ext, {
+        channel: channelOldFormat,
+        guild: "testGuild",
+        requester: "testRequester",
+        requesterId: "1",
+        startTime: startTimeOldFormat,
+      });
+      expect(name).toEqual(`${startTime}-${channel}-${rId}${ext}`);
+    });
     it("No record metadata", () => {
       const ctrl = getMockService();
       const rId = 1;

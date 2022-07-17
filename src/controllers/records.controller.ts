@@ -259,10 +259,18 @@ export class RecordsController implements interfaces.Controller {
     // First, we try to get the idela naming convention, but it depends on record
     // metadata
     // <UTC_timestamp>-<channel_name>-<id>.<container_extension>
-    const channelName = info?.channel;
-    const started = info?.startTime;
+    let channelName = info?.channel;
+    let started = info?.startTime;
     let name: string;
     if (started !== undefined && channelName !== undefined) {
+      // Check for Pandora v1 naming
+      // If the channel name is something like name#id, remove the ID
+      const oldChannelNamingRegex = /(.*)#\d+$/;
+      if (oldChannelNamingRegex.test(channelName))
+        channelName = channelName.match(oldChannelNamingRegex)[1];
+      // Likewise, if the startDate is not a timestamp, this is probably an old UTC string
+      if (isNaN(Number(started))) started = String(new Date(started).getTime());
+
       name = `${started}-${channelName}-${id}${ext}`;
       // If the name is too long to be a filename, cut the channel name
       if (name.length > MAX_FILE_NAME_LENGTH) {
