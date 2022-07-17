@@ -31,6 +31,10 @@ export class RecordsService implements IRecordsService {
    * @param id
    */
   async downloadFromRemote(id: number, path: string): Promise<void> {
+    if (this.objStore === undefined)
+      throw new RecordError(
+        "Attempted to download files from an undefined object store"
+      );
     // Search for the records files...
     const list = await this.objStore.list({ prefix: String(id) });
     if (list.Contents.length === 0)
