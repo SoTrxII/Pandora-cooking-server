@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/SoTrxII/Pandora-cooking-server/actions/workflows/publish-coverage.yml/badge.svg)
 [![codecov](https://codecov.io/gh/SoTrxII/Pandora-cooking-server/branch/master/graph/badge.svg?token=YI8X1HA6I7)](https://codecov.io/gh/SoTrxII/pandora-cooking-server)
-[![Docker Image Size](https://badgen.net/docker/size/sotrx/pandora-cooking-server/2.0.0?icon=docker&label=cooking-server)](https://hub.docker.com/r/sotrx/cooking-server/)
+[![Docker Image Size](https://badgen.net/docker/size/sotrx/pandora-cooking-server/2.1.0?icon=docker&label=cooking-server)](https://hub.docker.com/r/sotrx/pandora-cooking-server/)
 
 This is the cooking server for [Pandora](https://github.com/SoTrxII/Pandora).
 All the audio processing scripts were written by Yahweasel for [Craig](https://github.com/Yahweasel/craig).
