@@ -13,9 +13,10 @@ describe("Cooking", () => {
   let cooker: Cooker;
   const RECORD_SAMPLE_ID = 872660673;
   let testDir: string;
+  let projectRoot: string;
 
   beforeAll(async () => {
-    const projectRoot = join(__dirname, "../../../");
+    projectRoot = join(__dirname, "../../../");
     // MAke a temp dir and copy rec/ file into it for testing
     testDir = await mkdtemp(join(tmpdir(), "test-rec"));
     await cp(join(projectRoot, "src", "assets"), testDir, { recursive: true });
@@ -163,9 +164,23 @@ describe("Cooking", () => {
     });
   });
 
-  describe("Locking", () => {});
-
-  describe("Delete", () => {});
+  describe("Get record metadata", () => {
+    it("Return metadata when file exists", async () => {
+      const info = await cooker.getRecordMetadata(RECORD_SAMPLE_ID);
+      expect(info).toEqual({
+        key: "0",
+        delete: "0",
+        requester: "anUser#433443",
+        requesterId: "1111111111111",
+        startTime: "2020-09-24T12:56:29.760Z",
+        guild: "Unlimited Test Work",
+        channel: "Général",
+      });
+    });
+    it("Throws when file doesn't exist", async () => {
+      await expect(cooker.getRecordMetadata(-1)).rejects.toThrow();
+    });
+  });
 
   afterAll(async () => {
     try {

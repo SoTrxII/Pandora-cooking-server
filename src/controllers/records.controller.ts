@@ -13,7 +13,11 @@ import { inject } from "inversify";
 import { TYPES } from "../types";
 import { IRecordsService } from "../services/records/records.service.api";
 import { ILogger } from "../pkg/logger/logger-api";
-import { ALLOWED_CONTAINERS, ALLOWED_FORMATS } from "../pkg/cooker/cook-api";
+import {
+  ALLOWED_CONTAINERS,
+  ALLOWED_FORMATS,
+  IRecordMetadata,
+} from "../pkg/cooker/cook-api";
 
 @controller("/")
 export class RecordsController implements interfaces.Controller {
@@ -140,12 +144,21 @@ export class RecordsController implements interfaces.Controller {
       dynaudnorm: false,
     };
     try {
-      const meta = this.recordsService.getMetadata(options);
-      res.setHeader("content-type", meta.mime);
-      res.setHeader(
-        "content-disposition",
-        `attachment; filename=${id}${meta.extension}`
+      const fileMetadata = this.recordsService.getMetadata(options);
+      res.setHeader("content-type", fileMetadata.mime);
+      // <UTC_timestamp>-<channel_name>-<id>.<container_extension>
+      let recordMetadata: Partial<IRecordMetadata>;
+      try {
+        recordMetadata = await this.recordsService.getRecordMetadata(id);
+      } catch (e) {
+        this.logger.warn(`Could not retrieve metadata for record ${id}`, e);
+      }
+      const name = this.formatFileName(
+        id,
+        fileMetadata.extension,
+        recordMetadata
       );
+      res.setHeader("content-disposition", `attachment; filename=${name}`);
       // Workaround for https://github.com/inversify/InversifyJS/issues/850a
       const stream = await this.recordsService.stream(id, options);
       return () => stream.pipe(res);
@@ -229,5 +242,57 @@ export class RecordsController implements interfaces.Controller {
       return;
     }
     res.status(StatusCodes.OK);
+  }
+
+  /**
+   * Return file naming convention, depending on the amount of info retrieved
+   * @param id
+   * @param ext
+   * @param info
+   */
+  formatFileName(
+    id: number,
+    ext: string,
+    info?: Partial<IRecordMetadata>
+  ): string {
+    const MAX_FILE_NAME_LENGTH = 255;
+    // First, we try to get the idela naming convention, but it depends on record
+    // metadata
+    // <UTC_timestamp>-<channel_name>-<id>.<container_extension>
+    const channelName = info?.channel;
+    const started = info?.startTime;
+    let name: string;
+    if (started !== undefined && channelName !== undefined) {
+      name = `${started}-${channelName}-${id}${ext}`;
+      // If the name is too long to be a filename, cut the channel name
+      if (name.length > MAX_FILE_NAME_LENGTH) {
+        const withoutChannelNameTotal =
+          started.length + String(id).length + ext.length;
+        // Making sure we're under the name limit
+        const OFFSET = 10;
+        const channelNameLength =
+          MAX_FILE_NAME_LENGTH - withoutChannelNameTotal - OFFSET;
+        const truncatedChannelNAme = channelName.substring(
+          0,
+          channelNameLength
+        );
+        name = `${started}-${truncatedChannelNAme}-${id}${ext}`;
+      }
+    } else {
+      // Falling back to <id>.<container_extension>
+      name = `${id}${ext}`;
+    }
+
+    // All illegal characters is a filename
+    const illegalRe = /[\/\?<>\\:\*\|"]/g;
+    // All control characters for a terminal
+    const controlRe = /[\x00-\x1f\x80-\x9f]/g;
+    // Forbidden trailing characters for windows
+    const windowsTrailingRe = /[\. ]+$/;
+    // Return a sanitized name
+    return name
+      .replace(illegalRe, "")
+      .replace(controlRe, "")
+      .replace(windowsTrailingRe, "");
   }
 }

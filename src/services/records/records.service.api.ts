@@ -1,5 +1,9 @@
 import { Readable } from "stream";
-import { ICookingOptions, IRecordMetadata } from "../../pkg/cooker/cook-api";
+import {
+  ICookingOptions,
+  IFileMetadata,
+  IRecordMetadata,
+} from "../../pkg/cooker/cook-api";
 
 export class RecordError extends Error {}
 export interface IRecordsService {
@@ -22,11 +26,18 @@ export interface IRecordsService {
    * Return file metadata corresponding to the given options
    * @param options
    */
-  getMetadata(options: ICookingOptions): IRecordMetadata;
+  getMetadata(options: ICookingOptions): IFileMetadata;
 
   /**
    * Delete the record from the local FS and remote object storage (if defined)
    * @param id
    */
   delete(id: number): Promise<boolean>;
+
+  /**
+   * Retrieve info written by Pandora when the record started
+   * @throws RecordError if the info could not be retrieved
+   * @param id
+   */
+  getRecordMetadata(id: number): Promise<Partial<IRecordMetadata>>;
 }

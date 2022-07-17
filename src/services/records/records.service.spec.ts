@@ -134,6 +134,27 @@ describe("Record service", () => {
       await expect(deps.rServ.delete(SAMPLE_RECORD_ID)).resolves.toEqual(false);
     });
   });
+
+  describe("Get record metadata", () => {
+    it("When cooker ok", async () => {
+      const deps = getRecordsService();
+      // Setting cooker ok response
+      deps.cooker
+        .getRecordMetadata(Arg.all())
+        .resolves({ channel: "test", guild: "test" });
+      await expect(
+        deps.rServ.getRecordMetadata(SAMPLE_RECORD_ID)
+      ).resolves.not.toThrow();
+    });
+    it("When cooker throws", async () => {
+      const deps = getRecordsService();
+      // Setting cooker ok response
+      deps.cooker.getRecordMetadata(Arg.all()).throws("test");
+      await expect(
+        deps.rServ.getRecordMetadata(SAMPLE_RECORD_ID)
+      ).rejects.toThrow(RecordError);
+    });
+  });
 });
 
 interface IRecordServOpt {

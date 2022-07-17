@@ -3,7 +3,7 @@ import { Readable } from "stream";
 /**
  * A set of metadata for a cooked record
  */
-export interface IRecordMetadata {
+export interface IFileMetadata {
   /** Described file extension */
   extension: string;
   /** Describe file MIME type */
@@ -46,6 +46,22 @@ export interface ICookingOptions {
 }
 
 /**
+ * Records info other than the recording files themselves
+ */
+export interface IRecordMetadata {
+  /** Username of the user requesting the record */
+  requester: string;
+  /** Discord ID of the user requesting the record */
+  requesterId: string;
+  /** Record starting date (timestamp) */
+  startTime: string;
+  /** Discord guild name */
+  guild: string;
+  /** Discord channel that was recorded in the guild */
+  channel: string;
+}
+
+/**
  * A class managing records
  */
 export interface ICooking {
@@ -75,7 +91,7 @@ export interface ICooking {
    * Guess the mimetype of a file from its expected format and container
    * @param options
    */
-  getFileMetadataFor(options: ICookingOptions): IRecordMetadata;
+  getFileMetadataFor(options: ICookingOptions): IFileMetadata;
 
   /**
    * Get an exclusive lock on a file
@@ -83,6 +99,14 @@ export interface ICooking {
    * @param filePath
    */
   getExclusiveLock(filePath: string): boolean;
+
+  /**
+   * Returns all metadata written by Pandora when the record started
+   * /!\ These metadata changes depending on the version of pandora used /!\
+   * @throws Error if the info file doesn't exist or the JSON isn't correct
+   * @param id
+   */
+  getRecordMetadata(id: number): Promise<Partial<IRecordMetadata>>;
 
   /**
    * Records base directory

@@ -4,7 +4,7 @@ import { IObjectStore } from "../../pkg/object-store/objet-store-api";
 import {
   ICookingOptions,
   ICooking,
-  IRecordMetadata,
+  IFileMetadata, IRecordMetadata
 } from "../../pkg/cooker/cook-api";
 import { Readable } from "stream";
 import { IRecordsService, RecordError } from "./records.service.api";
@@ -86,7 +86,7 @@ export class RecordsService implements IRecordsService {
     return this.cooker.exists(id);
   }
 
-  getMetadata(options: ICookingOptions): IRecordMetadata {
+  getMetadata(options: ICookingOptions): IFileMetadata {
     return this.cooker.getFileMetadataFor(options);
   }
 
@@ -104,5 +104,13 @@ export class RecordsService implements IRecordsService {
       await this.objStore.delete(...list.Contents.map((c) => c.Key));
     }
     return hasBeenDeleted;
+  }
+
+  async getRecordMetadata(id: number): Promise<Partial<IRecordMetadata>> {
+    try {
+      return await this.cooker.getRecordMetadata(id);
+    } catch (e) {
+      throw new RecordError(e);
+    }
   }
 }

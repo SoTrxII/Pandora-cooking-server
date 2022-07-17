@@ -3,6 +3,7 @@ import {
   ALLOWED_FORMATS,
   ICookingOptions,
   ICooking,
+  IFileMetadata,
   IRecordMetadata,
 } from "./cook-api";
 import { join, resolve } from "path";
@@ -10,6 +11,7 @@ import { existsSync, unlinkSync } from "fs";
 import { execSync, spawn } from "child_process";
 import { Readable } from "stream";
 import { injectable } from "inversify";
+import { readFile } from "fs/promises";
 
 export class CookerOptionsInvalidError extends Error {}
 
@@ -55,6 +57,9 @@ export class Cooker implements ICooking {
     ".ogg.info",
     ".ogg.users",
   ];
+
+  /** Which one is the suffix of the info file */
+  private static INFO_FILE_SUFFIX = Cooker.SUFFIXES[3];
 
   /**
    * @param recordingsDir Path to find the raw Pandora/Craig recordings
@@ -136,7 +141,7 @@ export class Cooker implements ICooking {
     return cookingProcess.stdout;
   }
 
-  getFileMetadataFor(options: ICookingOptions): IRecordMetadata {
+  getFileMetadataFor(options: ICookingOptions): IFileMetadata {
     if (Cooker.CONTAINERS_METADATA_MAP.has(options.container)) {
       return Cooker.CONTAINERS_METADATA_MAP.get(options.container);
     }
@@ -169,5 +174,11 @@ export class Cooker implements ICooking {
     if (isLocked)
       Cooker.SUFFIXES.map((s) => `${fileBase}${s}`).forEach(unlinkSync);
     return isLocked;
+  }
+
+  async getRecordMetadata(id: number): Promise<Partial<IRecordMetadata>> {
+    const file = join(this.recordingsDir, String(id) + Cooker.INFO_FILE_SUFFIX);
+    const infoText = await readFile(file, { encoding: "utf-8" });
+    return JSON.parse(infoText) as Partial<IRecordMetadata>;
   }
 }

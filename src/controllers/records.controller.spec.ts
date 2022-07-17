@@ -67,6 +67,47 @@ describe("Records Controller", () => {
       expect(reqP.returnObj.rCode).toEqual(500);
     });
   });
+
+  describe("Format name", () => {
+    it("Valid record metadata", () => {
+      const ctrl = getMockService();
+      const startTime = String(new Date().getTime());
+      const rId = 1;
+      const ext = ".test";
+      const channel = "testChannel";
+      const name = ctrl.formatFileName(rId, ext, {
+        channel,
+        guild: "testGuild",
+        requester: "testRequester",
+        requesterId: "1",
+        startTime,
+      });
+      expect(name).toEqual(`${startTime}-${channel}-${rId}${ext}`);
+    });
+    it("Way too long channel name must be truncated", () => {
+      const FILENAME_LIMIT = 255;
+      const ctrl = getMockService();
+      const startTime = String(new Date().getTime());
+      const rId = 1;
+      const ext = ".test";
+      const channel = "testChannel".repeat(100);
+      const name = ctrl.formatFileName(rId, ext, {
+        channel,
+        guild: "testGuild",
+        requester: "testRequester",
+        requesterId: "1",
+        startTime,
+      });
+      expect(name.length).toBeLessThan(FILENAME_LIMIT);
+    });
+    it("No record metadata", () => {
+      const ctrl = getMockService();
+      const rId = 1;
+      const ext = ".test";
+      const name = ctrl.formatFileName(rId, ext, {});
+      expect(name).toEqual(`${rId}${ext}`);
+    });
+  });
 });
 
 function prepareRequest(params: Record<string, unknown>) {
