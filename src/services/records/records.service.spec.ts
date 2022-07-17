@@ -14,7 +14,6 @@ import { RecordError } from "./records.service.api";
 const SAMPLE_RECORD_ID = 872660673;
 
 describe("Record service", () => {
-
   describe("Stream", () => {
     it("Not thrown when obj store undefined", async () => {
       const deps = getRecordsService({ localOnly: true });
