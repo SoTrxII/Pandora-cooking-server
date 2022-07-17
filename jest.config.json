@@ -18,7 +18,8 @@
   "!src/**/*.integration.spec.ts",
   "!src/**/main.ts",
   "!src/**/dapr-server-adapter.ts",
-  "!src/**/logger-*.ts"
+  "!src/**/logger-*.ts",
+  "!src/server.ts"
 ],
   "modulePathIgnorePatterns": [
   "<rootDir>/dist",
