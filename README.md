@@ -1,145 +1,127 @@
 # Pandora cooking server
 
+![CI](https://github.com/SoTrxII/Pandora-cooking-server/actions/workflows/publish-coverage.yml/badge.svg)
+[![codecov](https://codecov.io/gh/SoTrxII/Pandora-cooking-server/branch/master/graph/badge.svg?token=YI8X1HA6I7)](https://codecov.io/gh/SoTrxII/pandora-cooking-server)
+[![Docker Image Size](https://badgen.net/docker/size/sotrx/pandora-cooking-server/2.0.0?icon=docker&label=cooking-server)](https://hub.docker.com/r/sotrx/cooking-server/)
+
 This is the cooking server for [Pandora](https://github.com/SoTrxII/Pandora).
 All the audio processing scripts were written by Yahweasel for [Craig](https://github.com/Yahweasel/craig).
 This project is just a server wrapper around the cooking scripts.
 
-However, the cooking scripts have been slightly changed : 
-+ Removed exclusive locking (only shared locks except for deletion), allowing multiple downloads at once.
+However, the cooking scripts have been slightly changed :
+
+- Removed exclusive locking (only shared locks except for deletion), allowing multiple downloads at once.
 
 ## Usage
-+ GET /<recording_id> 
-    + Description : Process the recording identified by *recording_id*. 
-    + Query string arguments :
-        + format : Audio codec/extension wanted 
-            + copy : Copy the raw ogg streams for each user. This option isn't compatible with the mix container.
-            + oggflac
-            + aac
-            + he-aac : Be careful, this one is platform-dependant. See [limitations](#known-limitations--trivia).
-            + vorbis
-            + flac
-            + opus
-            + wav
-            + adpcm
-            + wav8
-            + mp3 : Widespread but not that great, opus is way better.   
-            + ra
-        
-        **Default: Opus**
-        + container : "Box" to put the audio streams in
-            + *mix* (One audio file for the whole recording)
-            + *zip* (one audio file per user in a zip file)
-            + *ogg* (Multi-channels .ogg file)
-            + *matroska* (Multi-channels .mka file)
-            + *aupzip* (one audio file par user in a zipped Audacity project ) 
-        
-        **Default: mix**
-    + Examples :
-        + /872660673?format=mp3&container=aupzip will produce one mp3 file for each user (don't use mp3).
-        The returned file will be a zip file containing all mp3.
-        + /2222?format=aac will return a single .aac audio file for the whole recording.
-        
-+ DELETE /<recording_id>
-    + Description : delete the recording identified by *recording_id*. 
+
+Two endpoints are provided.
+
+- GET /:id allowing to retrieve a record audio by its ID
+- DELETE /:id to delete a record raw files
+
+You can choose the output format.
+
+Full API documentation is available [here](https://sotrxii.github.io/Pandora-cooking-server/)
+
+## Architecture
+
+![Architecture](./resources/images/architecture.png)
+
+The Cooking server is quite simple :
+
+- The **Records controller** is an express controller, checking requests arguments and forwarding request to the Records Service
+- The **Records Service**, handling business logic
+- A **logger**. Plain text logging is used in development, [ECS format](https://www.elastic.co/guide/en/ecs/current/index.html) is used in production.
+- An **Object Store**, removing the need for a shared volume with Pandora
+- The **Cooker** itself, handling the cooking scripts invocations
+
+#### Dapr
+
+[Dapr](https://github.com/dapr/dapr) is used a decoupling solution. Dapr uses **components** to define the implementation
+of some part of the application at runtime using a [sidecar architecture.](https://medium.com/nerd-for-tech/microservice-design-pattern-sidecar-sidekick-pattern-dbcea9bed783)
+
+These components are YAML files mounted in the sidecar as a volume. You can find a sample deployment
+using these components in the [minimal deployment](#minimal-deployment) section.
 
 
-## Installation
+## Minimal deployment
 
-### Docker
-Using Docker to run the bot is the recommended (and easy) way.
-```bash
-# Either pull the bot from the GitHub registry (requiring login for some reason)
-docker login docker.pkg.github.com --username <YOUR_USERNAME>
-docker pull docker.pkg.github.com/sotrx/pandora-cooking-server/pandora-cooking-server:latest
+Deployment is explained is [Pandora's README](https://github.com/SoTrxII/Pandora#minimal-deployment)
 
-# OR build it yourself (from the project's root)
-docker build -t docker.pkg.github.com/sotrx/pandora-cooking-server/pandora-cooking-server:latest
-```
-Once the image is pulled/built, run it:
+## Configuration
 
-```bash
-docker run -it docker.pkg.github.com/sotrx/pandora-cooking-server/pandora-cooking-server:latest
+The cooking server uses a single **optional** environment variable.
+
+```dotenv
+# Name of the dapr component to use as a remote object storage
+OBJECT_STORE_NAME=<DAPR_COMPONENT_OBJECT_STORE>
 ```
 
-#### Why not Alpine ? 
-Alpine is lacking some unix tools and would require a custom ffmpeg build to run all the possible configuration of the
-cooking process. The extra gain in space is not worth going through that honestly.  
+## Some choices explanation
 
-### Natively
-Running the server natively is a bit trickier, but not that difficult.
+### Why not Alpine ?
 
-#### Requirements
+The cooking server Docker image is relatively large. A part of the reason is that the image is built over ubuntu.
 
-The requirements are nearly the same as Craig's. 
-You'll need all these installed : 
-+ ffmpeg ( http://ffmpeg.org/ ) compiled with libopus support
-+ flac ( https://xiph.org/flac/ )
-+ oggenc ( https://xiph.org/vorbis/ )
-+ opusenc ( http://opus-codec.org/ )
-+ fdkaac ( https://github.com/nu774/fdkaac )
-+ lame ( https://lame.sourceforge.io/ ) (mp3 support)
-+ zip and unzip ( http://infozip.org/ )
+Although Alpine is the ideal distribution for Docker image in the general case, it is
+lacking some unix tools and would require a custom ffmpeg build to run all the possible configuration of the
+cooking process. The extra gain in space isn't worth it in my opinion.
 
-Quick install command: 
+Here's some guidelines if you want to make your own spin of the cooking server image.
+
+#### Running without a container / a custom container
+
+These needs to be installed on the system :
+
+- ffmpeg ( http://ffmpeg.org/ ) **compiled with libopus support**
+- flac ( https://xiph.org/flac/ )
+- oggenc ( https://xiph.org/vorbis/ )
+- opusenc ( http://opus-codec.org/ )
+- fdkaac ( https://github.com/nu774/fdkaac )
+- lame ( https://lame.sourceforge.io/ ) (mp3 support)
+- zip and unzip ( http://infozip.org/ )
+
+Quick install command:
+
 ```bash
 # Debian-based distros
 sudo apt install ffmpeg flac vorbis-tools zip fdkaac lame
 # Red-Hat based distros (Yes there is really an extra hyphen)
 sudo dnf install ffmpeg flac vorbis-tools zip fdk-aac lame
-# Windows
-(Use Docker, the cooking script is a pure Bash script, you won't be able to run it anyway) 
 ```
 
 Next, all the cooking scripts needs to be compiled. Beware, you will need GCC/make/autoconf
 (and maybe more depending on the distro).
+
 ```bash
 # From the project's root
 cd cook
 for i in \*.c; do gcc -O3 -o ${i%.c} $i; done
 ```
 
-#### Direct dependencies and transpilation
+The nodeapp can then be transpiled and executed.
 
 ```bash
-# nodejs and npm must be installed
+# JS Deps
 npm install
-# Transpile Typescript into Javascript
+# Typescript -> Javascript
 npm run build
+# You'll need dapr installed on the system !
+npm run start:dapr
+# Server start
+npm run start:dev
 ```
 
-### Running the server
+### Windows compatibility
 
-Copy .env.example into .env. Refer to the [configuration step](#configuration) to fill the values. 
-When this is done, the quickest way to get the server running is to run:
-   
-    npm run start:dev
-    
-However, this is not the best way to run it in a production environment. 
+This project **cannot be executed** on Windows. Windows compatibility would require to rewrite the cooking scripts.
+Rewriting these would make keeping up with Yeahweasel updates much more tricky.
 
-A cleaner way would be to copy the **dist** directory, containing the transpiled Javascript, into another location and
-only install the production dependencies.
-```bash
-# From the project's root
-cp -r dist /away/pandora-cooking-server
-cd /away/pandora-cooking-server
-npm install --only=prod
-node main.js
-```
-With this, the server should be up and running ! 
-
-If you've read all this, congratulations. Now, seriously, just use Docker. 
-
-## Configuration
-
+However, using either Docker-desktop or WSL2 should work.
 
 ## Known limitations && Trivia
-+ Matroska containers can't contain either AAC or HE-AAC. More precisely, they *should* but it doesn't work. 
-Thus, using AAC and Mastroska together is prevented by the server.
-+ On Fedora (and probably every Red Hat distros), the fdk-aac package is "crippled" and doesn't support HE-AAC 
-out of the box.
 
-
-
-
-
-
+- Matroska containers can't contain either AAC or HE-AAC. More precisely, they _should_ but it doesn't work.
+  Thus, using AAC and Mastroska together is prevented by the server.
+- On Fedora (and probably every Red Hat distros), the fdk-aac package is "crippled" and doesn't support HE-AAC
+  out of the box.

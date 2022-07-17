@@ -29,3 +29,6 @@ openapi.json
 
 # Ignore coverage
 coverage
+
+# Ignoring old files used in refactoring
+*.ts.bak
