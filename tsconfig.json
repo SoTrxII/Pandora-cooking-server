@@ -31,6 +31,10 @@
     "typeRoots": [
       "node_modules/@types",
       "src/@types"
+    ],
+    "lib": [
+      "es2017.full",
+      "es2020.promise"
     ]
   }
 }
