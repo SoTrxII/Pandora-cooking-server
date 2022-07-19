@@ -40,4 +40,17 @@ export interface IRecordsService {
    * @param id
    */
   getRecordMetadata(id: number): Promise<Partial<IRecordMetadata>>;
+
+  /**
+   * Asynchronously transcode a record into an audio stream
+   * and upload it on the backend storage if the component is defined
+   * @param stream
+   * @param id
+   * @param options
+   */
+  startAsyncTranscodingJob(
+    stream: Readable,
+    id: string,
+    options: ICookingOptions
+  ): Promise<void>;
 }

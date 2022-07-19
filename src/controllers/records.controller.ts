@@ -3,11 +3,13 @@ import {
   controller,
   httpDelete,
   httpGet,
+  httpPost,
   interfaces,
   request,
+  requestBody,
   response,
 } from "inversify-express-utils";
-import { Cooker, CookerOptionsInvalidError } from "../pkg/cooker/cook";
+import { CookerOptionsInvalidError } from "../pkg/cooker/cook";
 import { StatusCodes } from "http-status-codes";
 import { inject } from "inversify";
 import { TYPES } from "../types";
@@ -18,7 +20,34 @@ import {
   ALLOWED_FORMATS,
   IRecordMetadata,
 } from "../pkg/cooker/cook-api";
+import { Readable } from "stream";
 
+/**
+ * @openapi
+ *     components:
+ *       desc:
+ *         container: |
+ *          File container:
+ *          * `mix` - One audio file for the whole recording
+ *          * `zip` - One audio file per user in a zip file
+ *          * `ogg` - Multi-channels .ogg file
+ *          * `matroska` - Multi-channels .mka file
+ *          * `aupzip` - one audio file par user in a zipped Audacity project
+ *         format: |
+ *           Audio codec/extension wanted:
+ *           * `copy` - Copy the raw ogg streams for each user. This option isn't compatible with the mix container.
+ *           * `oggflac`
+ *           * `aac`
+ *           * `heaac` - Be careful, this one is platform-dependant.
+ *           * `vorbis`
+ *           * `flac`
+ *           * `opus`
+ *           * `wav`
+ *           * `adpcm`
+ *           * `wav8`
+ *           * `mp3`
+ *           * `ra`
+ */
 @controller("/")
 export class RecordsController implements interfaces.Controller {
   constructor(
@@ -68,13 +97,8 @@ export class RecordsController implements interfaces.Controller {
    *            type: string
    *            enum: [mix, aupzip, zip, matroska, ogg]
    *            default: mix
-   *          description: >
-   *             File container:
-   *              * `mix` - One audio file for the whole recording
-   *              * `zip` - One audio file per user in a zip file
-   *              * `ogg` - Multi-channels .ogg file
-   *              * `matroska` - Multi-channels .mka file
-   *              * `aupzip` - one audio file par user in a zipped Audacity project
+   *          description:
+   *            $ref: '#/components/desc/container'
    *        - name: format
    *          in: query
    *          required: false
@@ -82,20 +106,8 @@ export class RecordsController implements interfaces.Controller {
    *            type: string
    *            enum: [copy, oggflac, vorbis, aac, heaac, flac, opus, wav, adpcm, wav8, mp3, ra]
    *            default: opus
-   *          description: >
-   *             Audio codec/extension wanted:
-   *              * `copy` - Copy the raw ogg streams for each user. This option isn't compatible with the mix container.
-   *              * `oggflac`
-   *              * `aac`
-   *              * `heaac` - Be careful, this one is platform-dependant.
-   *              * `vorbis`
-   *              * `flac`
-   *              * `opus`
-   *              * `wav`
-   *              * `adpcm`
-   *              * `wav8`
-   *              * `mp3`
-   *              * `ra`
+   *          description:
+   *            $ref: '#/components/desc/format'
    */
   @httpGet(":id")
   async get(
@@ -177,6 +189,192 @@ export class RecordsController implements interfaces.Controller {
       this.logger.error(`Fatal error occurred. Error: `, { err: e });
       res.end("Error while cooking recording with id: " + id);
     }
+  }
+
+  @httpPost("")
+  /**
+   * @openapi
+   *
+   * /:
+   *   post:
+   *      description: Process one or more records asynchronously. Records will be either store on local FS or object storage if provided
+   *      responses:
+   *       202:
+   *         description: Transcoding job has been accepted
+   *       404:
+   *         description: Record not found
+   *       422:
+   *         description: The provided container/format aren't compatible with each other
+   *       500:
+   *         description: Something went wrong
+   *      requestBody:
+   *        required: true
+   *        content:
+   *          application/json:
+   *            schema:
+   *              oneOf:
+   *                - type: object
+   *                  properties:
+   *                    ids:
+   *                     type: array
+   *                     items:
+   *                      type: integer
+   *                    container:
+   *                      type: string
+   *                      enum: [mix, aupzip, zip, matroska, ogg]
+   *                      default: mix
+   *                      description:
+   *                        $ref: '#/components/desc/container'
+   *                    format:
+   *                      type: string
+   *                      enum: [copy, oggflac, vorbis, aac, heaac, flac, opus, wav, adpcm, wav8, mp3, ra]
+   *                      default: opus
+   *                      description:
+   *                        $ref: '#/components/desc/format'
+   *                  required:
+   *                    - ids
+   *                - type: object
+   *                  properties:
+   *                    ids:
+   *                      type: integer
+   *                      format: int32
+   *                    container:
+   *                      type: string
+   *                      enum: [mix, aupzip, zip, matroska, ogg]
+   *                      default: mix
+   *                      description:
+   *                        $ref: '#/components/desc/container'
+   *                    format:
+   *                      type: string
+   *                      enum: [copy, oggflac, vorbis, aac, heaac, flac, opus, wav, adpcm, wav8, mp3, ra]
+   *                      default: opus
+   *                      description:
+   *                        $ref: '#/components/desc/format'
+   *                  required:
+   *                    - id
+   */
+  async processAsync(
+    @request() req: express.Request,
+    @requestBody() body: Record<string, any>,
+    @response() res: express.Response
+  ) {
+    // Async processing, we just have to verify parameters and accept the job
+    // Disable request time out because cook.sh can take a long time
+    req.setTimeout(0);
+
+    if (body === undefined) {
+      res.status(StatusCodes.BAD_REQUEST);
+      res.end("Invalid request, body empty !");
+      return;
+    }
+    // Collect record ID(s) to process
+    let ids: string[];
+    // ID is a string
+    if (body?.id !== undefined) ids.push(body.id);
+    // IDs is an array of string. If both are provided, "ids" takes precedence
+    if (body?.ids !== undefined) ids = body.ids;
+    // Finally, ensure each record id is unique
+    ids = [...new Set(ids)];
+    this.logger.info(`New incoming async request with param id "${ids}"`);
+
+    // Once we've gotten all the record ids to process, ensure each one actually exists
+    // to fail fast
+    const recordExists = await Promise.all(
+      ids.map(
+        async (rid) =>
+          isNaN(Number(rid)) || !(await this.recordsService.exists(Number(rid)))
+      )
+    );
+    // If any record doesn't exist, abort
+    if (recordExists.some((exists) => exists === false)) {
+      const invalidIDs = ids
+        .filter((id, index) => recordExists[index] === false)
+        .join(",");
+      res.status(StatusCodes.NOT_FOUND);
+      this.logger.info(
+        `Request for record(s) with id(s) [${ids.join(
+          ","
+        )}] was denied : Some records ([${invalidIDs}]) don't exists`
+      );
+      res.end(`Some of the provided record(s) (${invalidIDs}) don't exist !`);
+      return;
+    }
+
+    // Optional args check : container and format
+    // All containers and format aren't compatible with each other
+    // but it would be overkill to check that too
+    // If not defined, fallback to a mixed opus single track
+    let container = body.container ?? ALLOWED_CONTAINERS.MIX;
+    let format = body.format ?? ALLOWED_FORMATS.OPUS;
+
+    const containers = Object.values(ALLOWED_CONTAINERS) as string[];
+    if (!containers.includes(container.toString())) {
+      container = ALLOWED_CONTAINERS.MIX;
+    }
+
+    const formats = Object.values(ALLOWED_FORMATS) as string[];
+    if (!formats.includes(format.toString())) {
+      format = ALLOWED_FORMATS.OPUS;
+    }
+
+    this.logger.debug(
+      `container: ${container}, format: ${format}, ids: ${ids.join(",")}`
+    );
+
+    // Convert all the records as an audio files, and store them directly on the object storage
+    // NOTE: As Dapr doesn't yet support streaming upload, we have to first convert all the records on the filesystem
+    const options = {
+      format: format as ALLOWED_FORMATS,
+      container: container as ALLOWED_CONTAINERS,
+      dynaudnorm: false,
+    };
+    // Open all audio streams, if any fails abort
+    const streams = await Promise.allSettled(
+      ids.map(
+        async (id) => await this.recordsService.stream(Number(id), options)
+      )
+    );
+    if (streams.some((s) => s.status === "rejected")) {
+      const errors = streams
+        .filter((s) => s.status === "rejected")
+        .map((rej: PromiseRejectedResult) => rej.reason);
+
+      // All streams have been converted the same way, we can take on the rejection
+      // and generalize the result
+
+      const exampleError = errors[0];
+      // Format and container aren't compatible
+      if (exampleError instanceof CookerOptionsInvalidError) {
+        res.status(StatusCodes.UNPROCESSABLE_ENTITY);
+        this.logger.warn(`Aborting record handling, invalid set of options`, {
+          err: exampleError,
+        });
+        res.end(exampleError.message);
+        return;
+      }
+      // Cooking script errored in some way
+      res.status(StatusCodes.INTERNAL_SERVER_ERROR);
+      this.logger.error(`Fatal error occurred. Error: `, { err: exampleError });
+      res.end("Error while cooking recording with ids: " + ids.join(","));
+      return;
+    }
+
+    // Past this point, all streams have opened successfully, we can accept the job
+    res.status(StatusCodes.ACCEPTED);
+    res.end();
+
+    streams
+      // all streams are valid past this point, we can directly get their value
+      .map((s: PromiseFulfilledResult<Readable>) => s.value)
+      // Process all streams concurrently as async jobs, the controller
+      // has no reason to supervise this
+      .forEach((stream, index) =>
+        this.recordsService.startAsyncTranscodingJob(
+          stream,
+          ids.at(index),
+          options
+        )
+      );
   }
 
   /**

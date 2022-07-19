@@ -4,12 +4,16 @@ import { IObjectStore } from "../../pkg/object-store/objet-store-api";
 import {
   ICookingOptions,
   ICooking,
-  IFileMetadata, IRecordMetadata
+  IFileMetadata,
+  IRecordMetadata,
 } from "../../pkg/cooker/cook-api";
-import { Readable } from "stream";
+import { Readable, Writable } from "stream";
 import { IRecordsService, RecordError } from "./records.service.api";
-import { writeFile } from "fs/promises";
+import { unlink, writeFile } from "fs/promises";
 import { join } from "path";
+import { createWriteStream } from "fs";
+import { pipeline } from "stream/promises";
+import { tmpdir } from "os";
 
 @injectable()
 export class RecordsService implements IRecordsService {
@@ -111,6 +115,46 @@ export class RecordsService implements IRecordsService {
       return await this.cooker.getRecordMetadata(id);
     } catch (e) {
       throw new RecordError(e);
+    }
+  }
+
+  async startAsyncTranscodingJob(
+    stream: Readable,
+    id: string,
+    options: ICookingOptions
+  ): Promise<void> {
+    const meta = await this.getMetadata(options);
+    const path = join(tmpdir(), id + meta.extension);
+    await this.writeToDisk(path, stream);
+    // TODO : Handle progress
+    // If the object store is defined, upload to transcoded file
+    // and remove it from the disk
+    if (this.objStore !== undefined) {
+      await this.objStore.create(path);
+      await unlink(path);
+    }
+  }
+  /**
+   * Write a record audio stream to the local FS
+   * @param path
+   * @param stream
+   */
+  async writeToDisk(path: string, stream: Readable) {
+    let destFile: Writable;
+    try {
+      destFile = createWriteStream(path);
+    } catch (e) {
+      throw new RecordError(
+        `File ${path} cannot be created. Reason ${e.message}`
+      );
+    }
+
+    try {
+      await pipeline(stream, destFile);
+    } catch (e) {
+      throw new RecordError(
+        `Error while writing record stream to disk. Reason ${e.message}`
+      );
     }
   }
 }
