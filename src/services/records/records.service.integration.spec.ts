@@ -21,7 +21,6 @@ import { setTimeout } from "timers/promises";
 import { createWriteStream } from "fs";
 import { JobNotifier } from "../../pkg/job-notifier/job-notifier";
 import { Substitute } from "@fluffy-spoon/substitute";
-import { IMessageBroker } from "../../internal/message-broker/message-broker-api";
 import { ILogger } from "../../pkg/logger/logger-api";
 import { DaprMessageBroker } from "../../internal/message-broker/dapr-message-broker";
 
@@ -175,7 +174,6 @@ describe("Record Service :: Integration", () => {
       }
     });
   });
-
 });
 
 interface IRecordsDeps {

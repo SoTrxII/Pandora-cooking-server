@@ -66,6 +66,11 @@ export interface IRecordMetadata {
  */
 export interface ICooking {
   /**
+   * Records base directory
+   */
+  readonly recordingsDir: string;
+
+  /**
    * Return true if every files needed for a recording to be processed are
    * present on the disk
    * @param id
@@ -107,9 +112,4 @@ export interface ICooking {
    * @param id
    */
   getRecordMetadata(id: number): Promise<Partial<IRecordMetadata>>;
-
-  /**
-   * Records base directory
-   */
-  readonly recordingsDir: string;
 }

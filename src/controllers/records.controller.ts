@@ -54,6 +54,7 @@ export class RecordsController implements interfaces.Controller {
     @inject(TYPES.ServiceRecords) private recordsService: IRecordsService,
     @inject(TYPES.Logger) private logger: ILogger
   ) {}
+
   /**
    * @openapi
    *

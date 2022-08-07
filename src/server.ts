@@ -5,6 +5,7 @@ import { container } from "./inversify.config";
 import { InversifyExpressServer } from "inversify-express-utils";
 import { ILogger } from "./pkg/logger/logger-api";
 import { TYPES } from "./types";
+
 const server = new InversifyExpressServer(container);
 const app = server.build();
 

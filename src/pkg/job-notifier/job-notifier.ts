@@ -10,6 +10,7 @@ export class JobNotifier implements IJobNotifier {
     error: "cookingError",
     done: "cookingDone",
   };
+
   constructor(
     @inject(TYPES.MessageBroker) private broker: IMessageBroker,
     @inject(TYPES.Logger) private logger: ILogger

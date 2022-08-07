@@ -15,10 +15,8 @@ import {
   IJobNotifier,
   IJobProgress,
 } from "../../pkg/job-notifier/job-notifier.api";
-import { Readable } from "stream";
 import { join } from "path";
 import { createReadStream } from "fs";
-import { JobNotifier } from "../../pkg/job-notifier/job-notifier";
 
 const SAMPLE_RECORD_ID = 872660673;
 
@@ -206,12 +204,14 @@ interface IRecordServOpt {
   localOnly: boolean;
   notifier: IJobNotifier;
 }
+
 interface IRecordServDeps {
   rServ: RecordsService;
   objStore: SubstituteOf<IObjectStore>;
   jobNotifier: SubstituteOf<IJobNotifier>;
   cooker: SubstituteOf<ICooking>;
 }
+
 function getRecordsService(
   opt: Partial<IRecordServOpt> = { localOnly: false, notifier: undefined }
 ): IRecordServDeps {
@@ -234,6 +234,7 @@ interface INotifierCalls {
   progress: number;
   done: number;
 }
+
 function getMockedNotifier(calls: INotifierCalls): IJobNotifier {
   return {
     async sendJobProgress(p: IJobProgress): Promise<void> {

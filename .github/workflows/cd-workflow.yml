@@ -3,7 +3,7 @@ name: Build new image and create a new release
 on:
   push:
     tags:
-      - '*'
+      - "*"
 jobs:
   image-build:
     runs-on: ubuntu-latest

@@ -37,6 +37,7 @@ export interface IPubSubServerProxy {
    */
   start(): Promise<void>;
 }
+
 /**
  * Any pub/sub broker
  */

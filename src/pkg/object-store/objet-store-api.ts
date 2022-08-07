@@ -42,6 +42,7 @@ export interface IObjectStore {
  * Error throw when a problem was detected with the stoarge backend
  */
 export class ObjectStoreError extends Error {}
+
 /**
  * Represents any object store sdk that could be used
  */

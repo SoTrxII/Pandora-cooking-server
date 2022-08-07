@@ -1,7 +1,10 @@
 import "reflect-metadata";
 import { DaprMessageBroker } from "./dapr-message-broker";
 import { Substitute } from "@fluffy-spoon/substitute";
-import { IPubSubClientProxy, IPubSubServerProxy } from "../../../../Velvet/src/internal/proxies/proxies";
+import {
+  IPubSubClientProxy,
+  IPubSubServerProxy,
+} from "../../../../Velvet/src/internal/proxies/proxies";
 
 describe("Message broker", () => {
   const mb = new DaprMessageBroker(

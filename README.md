@@ -36,6 +36,7 @@ The Cooking server is quite simple :
 - An **Object Store**, removing the need for a shared volume with Pandora
 - The **Cooker** itself, handling the cooking scripts invocations
 - A **Job Notifier**, handling messaging for async record processing
+
 #### Dapr
 
 [Dapr](https://github.com/dapr/dapr) is used a decoupling solution. Dapr uses **components** to define the implementation

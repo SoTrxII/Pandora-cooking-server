@@ -15,6 +15,7 @@ export interface IJobOptions {
   /** Update the processed size each X chunks. Default 100*/
   writeDataSamplingRate: number;
 }
+
 export interface IRecordsService {
   /**
    * Get an audio stream from a record id and parameters

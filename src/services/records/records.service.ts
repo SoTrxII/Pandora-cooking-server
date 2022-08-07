@@ -2,8 +2,8 @@ import { inject, injectable, optional } from "inversify";
 import { TYPES } from "../../types";
 import { IObjectStore } from "../../pkg/object-store/objet-store-api";
 import {
-  ICookingOptions,
   ICooking,
+  ICookingOptions,
   IFileMetadata,
   IRecordMetadata,
 } from "../../pkg/cooker/cook-api";
@@ -175,6 +175,7 @@ export class RecordsService implements IRecordsService {
       if (progressInterval !== undefined) clearInterval(progressInterval);
     }
   }
+
   /**
    * Write a record audio stream to the local FS
    * @param path
