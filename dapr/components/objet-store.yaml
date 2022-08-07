@@ -21,6 +21,6 @@ spec:
     - name: decodeBase64
       value: true
     - name: accessKey
-      value: "BAWWBzgG5tZJvfLM"
+      value: "SjqeBIBwvLbtDj58"
     - name: secretKey
-      value: "MIRe24hL5MFoQQlOkD7UWGWD9wBwD9tM"
+      value: "3vxGHkoskQM26KmMj2djm8XdxnwD8qUB"

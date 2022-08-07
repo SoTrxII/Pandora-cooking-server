@@ -16,7 +16,8 @@ However, the cooking scripts have been slightly changed :
 
 Two endpoints are provided.
 
-- GET /:id allowing to retrieve a record audio by its ID
+- GET /:id Synchronously process and download a record by its ID
+- POST /:id Asynchronously process a record and store it on the file system/ remote object storage
 - DELETE /:id to delete a record raw files
 
 You can choose the output format.
@@ -34,7 +35,7 @@ The Cooking server is quite simple :
 - A **logger**. Plain text logging is used in development, [ECS format](https://www.elastic.co/guide/en/ecs/current/index.html) is used in production.
 - An **Object Store**, removing the need for a shared volume with Pandora
 - The **Cooker** itself, handling the cooking scripts invocations
-
+- A **Job Notifier**, handling messaging for async record processing
 #### Dapr
 
 [Dapr](https://github.com/dapr/dapr) is used a decoupling solution. Dapr uses **components** to define the implementation
@@ -43,19 +44,30 @@ of some part of the application at runtime using a [sidecar architecture.](https
 These components are YAML files mounted in the sidecar as a volume. You can find a sample deployment
 using these components in the [minimal deployment](#minimal-deployment) section.
 
-
 ## Minimal deployment
 
 Deployment is explained is [Pandora's README](https://github.com/SoTrxII/Pandora#minimal-deployment)
 
 ## Configuration
 
-The cooking server uses a single **optional** environment variable.
+The cooking server uses two **optionals** environment variables.
 
 ```dotenv
 # Name of the dapr component to use as a remote object storage
 OBJECT_STORE_NAME=<DAPR_COMPONENT_OBJECT_STORE>
+# Name of the dapr component to use as an event backend
+PUBSUB_NAME=<DAPR_COMPONENT_PUBSUB>
 ```
+
+If any of these variables are defined, the corresponding Dapr components must be defined.
+
+### Autocooking
+
+A declarative subscription "autocook" is provided in the folder `dapr/components`.
+If applied, this subscription will instruct the cooking server to start processing automatically.
+
+When Pandora finishes recording **via the pub/sub method**, it fires a `stoppedRecordingDiscord` event.
+This subscription react to this event and start processing the record.
 
 ## Some choices explanation
 

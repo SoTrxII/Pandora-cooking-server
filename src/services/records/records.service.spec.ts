@@ -10,6 +10,15 @@ import {
 import { IObjectStore } from "../../pkg/object-store/objet-store-api";
 import { tmpdir } from "os";
 import { RecordError } from "./records.service.api";
+import {
+  IJobEvent,
+  IJobNotifier,
+  IJobProgress,
+} from "../../pkg/job-notifier/job-notifier.api";
+import { Readable } from "stream";
+import { join } from "path";
+import { createReadStream } from "fs";
+import { JobNotifier } from "../../pkg/job-notifier/job-notifier";
 
 const SAMPLE_RECORD_ID = 872660673;
 
@@ -155,26 +164,86 @@ describe("Record service", () => {
       ).rejects.toThrow(RecordError);
     });
   });
+
+  describe("Async transcoding job", () => {
+    it("Not thrown when obj store undefined", async () => {
+      const calls: INotifierCalls = { done: 0, error: 0, progress: 0 };
+      const notifier = getMockedNotifier(calls);
+      const deps = getRecordsService({ localOnly: true, notifier });
+      const sampleAudioPath = join(
+        __dirname,
+        "../../assets",
+        SAMPLE_RECORD_ID + ".ogg.data"
+      );
+      // Mock metadata to prevent a stream error
+      deps.cooker
+        .getFileMetadataFor(Arg.all())
+        .returns({ extension: "ogg", mime: "test" });
+
+      //deps.jobNotifier.didNotReceive().sendJobError(Arg.all());
+      await expect(
+        deps.rServ.startAsyncTranscodingJob(
+          createReadStream(sampleAudioPath),
+          "1",
+          {
+            format: ALLOWED_FORMATS.COPY,
+            container: ALLOWED_CONTAINERS.MIX,
+            dynaudnorm: false,
+          },
+          { writeDataSamplingRate: 100, progressInterval: 10 }
+        )
+      ).resolves.not.toThrow();
+
+      expect(calls.error).toEqual(0);
+      expect(calls.done).toEqual(1);
+      expect(calls.progress).toBeGreaterThanOrEqual(1);
+    });
+  });
 });
 
 interface IRecordServOpt {
   /** Whether to initialize remote storage */
   localOnly: boolean;
+  notifier: IJobNotifier;
 }
 interface IRecordServDeps {
   rServ: RecordsService;
   objStore: SubstituteOf<IObjectStore>;
+  jobNotifier: SubstituteOf<IJobNotifier>;
   cooker: SubstituteOf<ICooking>;
 }
 function getRecordsService(
-  opt: IRecordServOpt = { localOnly: false }
+  opt: Partial<IRecordServOpt> = { localOnly: false, notifier: undefined }
 ): IRecordServDeps {
   const cooker = Substitute.for<ICooking>();
+  const jobNotifier: SubstituteOf<IJobNotifier> =
+    (opt.notifier as unknown as SubstituteOf<IJobNotifier>) ??
+    Substitute.for<IJobNotifier>();
   let objStore = undefined;
   if (!opt.localOnly) objStore = Substitute.for<IObjectStore>();
   return {
     cooker,
     objStore,
-    rServ: new RecordsService(objStore, cooker),
+    jobNotifier,
+    rServ: new RecordsService(objStore, jobNotifier, cooker),
+  };
+}
+
+interface INotifierCalls {
+  error: number;
+  progress: number;
+  done: number;
+}
+function getMockedNotifier(calls: INotifierCalls): IJobNotifier {
+  return {
+    async sendJobProgress(p: IJobProgress): Promise<void> {
+      calls.progress++;
+    },
+    async sendJobDone(payload: IJobEvent): Promise<void> {
+      calls.done++;
+    },
+    async sendJobError(payload: IJobEvent): Promise<void> {
+      calls.error++;
+    },
   };
 }

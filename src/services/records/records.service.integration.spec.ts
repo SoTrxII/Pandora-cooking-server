@@ -6,7 +6,7 @@ import "reflect-metadata";
 import { RecordsService } from "./records.service";
 import { ExternalObjectStore } from "../../pkg/object-store/external-objet-store";
 import { DaprObjectStorageAdapter } from "../../pkg/object-store/dapr-object-storage-adapter";
-import { DaprClient } from "@dapr/dapr";
+import { DaprClient, DaprServer } from "@dapr/dapr";
 import { Cooker } from "../../pkg/cooker/cook";
 import { join } from "path";
 import { IObjectStore } from "../../pkg/object-store/objet-store-api";
@@ -19,8 +19,15 @@ import { tmpdir } from "os";
 import { cp, mkdtemp, readdir, rm } from "fs/promises";
 import { setTimeout } from "timers/promises";
 import { createWriteStream } from "fs";
+import { JobNotifier } from "../../pkg/job-notifier/job-notifier";
+import { Substitute } from "@fluffy-spoon/substitute";
+import { IMessageBroker } from "../../internal/message-broker/message-broker-api";
+import { ILogger } from "../../pkg/logger/logger-api";
+import { DaprMessageBroker } from "../../internal/message-broker/dapr-message-broker";
 
 const SAMPLE_RECORD_ID = 872660673;
+const PUBSUB_NAME = "pubsub";
+const OBJECT_STORE_NAME = "object-store";
 describe("Record Service :: Integration", () => {
   describe("Remote object store contain the desired record", () => {
     let testDir: string;
@@ -36,7 +43,7 @@ describe("Record Service :: Integration", () => {
         deps.objStore,
         SAMPLE_RECORD_ID
       );
-    });
+    }, 20000);
 
     it("Successfully download all files", async () => {
       await deps.rServ.downloadFromRemote(SAMPLE_RECORD_ID, testDir);
@@ -72,6 +79,49 @@ describe("Record Service :: Integration", () => {
       });
       stream.pipe(createWriteStream(join(testDir, "sample-res.zip")));
     }, 20000);
+
+    it("Async transcoding job", async () => {
+      const cookOpt = {
+        format: ALLOWED_FORMATS.COPY,
+        container: ALLOWED_CONTAINERS.ZIP,
+        dynaudnorm: false,
+      };
+      const stream = await deps.rServ.stream(SAMPLE_RECORD_ID, cookOpt);
+      await deps.rServ.startAsyncTranscodingJob(
+        stream,
+        String(SAMPLE_RECORD_ID),
+        cookOpt
+      );
+      const eventReceiver = new DaprServer().pubsub;
+      let pg = 0,
+        err = 0,
+        done = 0;
+      await eventReceiver.subscribe(
+        PUBSUB_NAME,
+        JobNotifier.TOPICS.progress,
+        async (data) => {
+          console.log(data);
+          pg++;
+        }
+      );
+      await eventReceiver.subscribe(
+        PUBSUB_NAME,
+        JobNotifier.TOPICS.error,
+        async () => {
+          err++;
+        }
+      );
+      await eventReceiver.subscribe(
+        PUBSUB_NAME,
+        JobNotifier.TOPICS.done,
+        async () => {
+          done++;
+        }
+      );
+      expect(done).toEqual(1);
+      expect(pg).toBeGreaterThanOrEqual(1);
+      expect(err).toEqual(0);
+    }, 60000);
 
     afterEach(async () => {
       await deps.objStore.delete(...sampleRecordFiles);
@@ -126,25 +176,6 @@ describe("Record Service :: Integration", () => {
     });
   });
 
-  describe("Stream", () => {
-    it("When record directly on local storage", () => {});
-    it("When record on remote object storage", () => {
-      // Setup : Upload record files on remote
-    });
-  });
-  describe("Download record from remote...", () => {
-    it("But it doesn't exists", () => {});
-  });
-
-  describe("Exists on remote", () => {
-    it("Yes", () => {});
-    it("No", () => {});
-  });
-
-  describe("Delete", () => {
-    it("Local", () => {});
-    it("Local && Remote", () => {});
-  });
 });
 
 interface IRecordsDeps {
@@ -155,13 +186,19 @@ interface IRecordsDeps {
 
 function getRecordsService(recordsPath: string): IRecordsDeps {
   const objStore = new ExternalObjectStore(
-    new DaprObjectStorageAdapter(new DaprClient().binding, "object-store")
+    new DaprObjectStorageAdapter(new DaprClient().binding, OBJECT_STORE_NAME)
+  );
+  const messageBroker = new DaprMessageBroker(
+    new DaprClient().pubsub,
+    undefined,
+    PUBSUB_NAME
   );
   const cooker = new Cooker(recordsPath, join(__dirname, "../../.."));
+  const jobN = new JobNotifier(messageBroker, Substitute.for<ILogger>());
   return {
     objStore,
     cooker,
-    rServ: new RecordsService(objStore, cooker),
+    rServ: new RecordsService(objStore, jobN, cooker),
   };
 }
 

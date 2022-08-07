@@ -37,6 +37,56 @@ describe("Records Controller", () => {
       expect(reqP.returnObj.rCode).toEqual(500);
     });
   });
+  describe("Post", () => {
+    it("Undefined body", async () => {
+      const ctrl = getMockService();
+      const reqP = prepareRequest({});
+      await ctrl.processAsync(reqP.req, undefined, reqP.res);
+      expect(reqP.returnObj.rCode).toEqual(400);
+    });
+    it("Empty body", async () => {
+      const ctrl = getMockService();
+      const reqP = prepareRequest({});
+      await ctrl.processAsync(reqP.req, {}, reqP.res);
+      expect(reqP.returnObj.rCode).toEqual(400);
+    });
+    it("Invalid id or ids", async () => {
+      const ctrl = getMockService();
+      const reqP = prepareRequest({});
+      await ctrl.processAsync(reqP.req, { id: "dhdfhfd" }, reqP.res);
+      expect(reqP.returnObj.rCode).toEqual(404);
+    });
+    it("'ID' specified but not 'IDS'", async () => {
+      const ctrl = getMockService();
+      const reqP = prepareRequest({});
+      await ctrl.processAsync(reqP.req, { id: "3333" }, reqP.res);
+      expect(reqP.returnObj.rCode).toEqual(202);
+    });
+    it("'IDs' specified but not 'ID'", async () => {
+      const ctrl = getMockService();
+      const reqP = prepareRequest({});
+      await ctrl.processAsync(reqP.req, { ids: ["3333", "4444"] }, reqP.res);
+      expect(reqP.returnObj.rCode).toEqual(202);
+    });
+
+    it("Record doesn't exists", async () => {
+      const ctrl = getMockService({
+        existsReturn: false,
+      });
+      const reqP = prepareRequest({});
+      await ctrl.processAsync(reqP.req, { id: "3333" }, reqP.res);
+      expect(reqP.returnObj.rCode).toEqual(404);
+    });
+
+    it("Unexpected error", async () => {
+      const ctrl = getMockService({
+        streamError: new Error("test"),
+      });
+      const reqP = prepareRequest({});
+      await ctrl.processAsync(reqP.req, { id: "3333" }, reqP.res);
+      expect(reqP.returnObj.rCode).toEqual(500);
+    });
+  });
   describe("Delete", () => {
     it("Invalid record arg", async () => {
       const ctrl = getMockService();
@@ -146,12 +196,18 @@ function prepareRequest(params: Record<string, unknown>) {
 function getMockService(
   err?: Partial<{
     metadataError: Error;
+    streamError: Error;
     deleteReturn: Error | boolean;
+    existsReturn: boolean;
   }>
 ) {
   const rService = Substitute.for<IRecordsService>();
+  if (err?.existsReturn == false) rService.exists(Arg.all()).resolves(false);
+
   if (err?.metadataError)
     rService.getMetadata(Arg.all()).throws(err?.metadataError);
+
+  if (err?.streamError) rService.stream(Arg.all()).throws(err?.streamError);
 
   if (err?.deleteReturn !== undefined) {
     if (err?.deleteReturn instanceof Error)

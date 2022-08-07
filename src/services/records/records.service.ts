@@ -7,18 +7,24 @@ import {
   IFileMetadata,
   IRecordMetadata,
 } from "../../pkg/cooker/cook-api";
-import { Readable, Writable } from "stream";
-import { IRecordsService, RecordError } from "./records.service.api";
+import { Readable, Transform, Writable } from "stream";
+import {
+  IJobOptions,
+  IRecordsService,
+  RecordError,
+} from "./records.service.api";
 import { unlink, writeFile } from "fs/promises";
 import { join } from "path";
 import { createWriteStream } from "fs";
 import { pipeline } from "stream/promises";
 import { tmpdir } from "os";
+import { IJobNotifier } from "../../pkg/job-notifier/job-notifier.api";
 
 @injectable()
 export class RecordsService implements IRecordsService {
   constructor(
     @inject(TYPES.ObjectStore) @optional() private objStore: IObjectStore,
+    @inject(TYPES.JobNotifier) @optional() private jobNotifier: IJobNotifier,
     @inject(TYPES.Cooking) private cooker: ICooking
   ) {}
 
@@ -121,17 +127,52 @@ export class RecordsService implements IRecordsService {
   async startAsyncTranscodingJob(
     stream: Readable,
     id: string,
-    options: ICookingOptions
+    cookOpt: ICookingOptions,
+    jobOpt: Partial<IJobOptions> = {}
   ): Promise<void> {
-    const meta = await this.getMetadata(options);
+    const defaultJobOpt: IJobOptions = {
+      progressInterval: 2000,
+      writeDataSamplingRate: 100,
+    };
+    const jobOptions = Object.assign(defaultJobOpt, jobOpt);
+    const meta = await this.getMetadata(cookOpt);
     const path = join(tmpdir(), id + meta.extension);
-    await this.writeToDisk(path, stream);
-    // TODO : Handle progress
-    // If the object store is defined, upload to transcoded file
-    // and remove it from the disk
-    if (this.objStore !== undefined) {
-      await this.objStore.create(path);
-      await unlink(path);
+    let totalBytes = 0;
+
+    let progressInterval = undefined;
+    if (this.jobNotifier !== undefined) {
+      // To handle progress, we publish the current bytes written every X seconds
+      // We can't know at this time the total size
+      progressInterval = setInterval(
+        async () => await this.jobNotifier.sendJobProgress({ totalBytes, id }),
+        jobOptions.progressInterval
+      );
+    }
+
+    try {
+      await this.writeToDisk(path, stream, {
+        // 64KB * 100 = 6,4MB
+        samplingRate: jobOptions.writeDataSamplingRate,
+        // The reason the progress isn't published here is that this function
+        // will not be awaited (it would cause perf issues). So we can't handle
+        // any synchronous error in this function.
+        pgCallback: async (total) => {
+          totalBytes = total;
+        },
+      });
+      await this.jobNotifier.sendJobDone({ id });
+      // If the object store is defined, upload to transcoded file
+      // and remove it from the disk
+      if (this.objStore !== undefined) {
+        await this.objStore.create(path);
+        await unlink(path);
+      }
+    } catch (e) {
+      await this.jobNotifier.sendJobError({ id });
+      throw e;
+    } finally {
+      // In any case remove the zombie interval
+      if (progressInterval !== undefined) clearInterval(progressInterval);
     }
   }
   /**
@@ -139,7 +180,17 @@ export class RecordsService implements IRecordsService {
    * @param path
    * @param stream
    */
-  async writeToDisk(path: string, stream: Readable) {
+  async writeToDisk(
+    path: string,
+    stream: Readable,
+    progressOpt: {
+      /** progress callback. must be async and will not be awaited  */
+      pgCallback: (currentBytes: number) => Promise<void>;
+      /** the progress callback will be called one time every `sampleRate` data event
+       * By default, a pipe chunk is 64KB (roughly) */
+      samplingRate: number;
+    }
+  ) {
     let destFile: Writable;
     try {
       destFile = createWriteStream(path);
@@ -150,7 +201,20 @@ export class RecordsService implements IRecordsService {
     }
 
     try {
-      await pipeline(stream, destFile);
+      // An integer limit in JS is 2**53, this should be enough in any case
+      let totalBytes = 0;
+      let tick = 0;
+      // This NO-OP transform stream is used to count the data passing through it
+      const progressTracker = new Transform({
+        transform(chunk, encoding, callback) {
+          totalBytes += chunk.length;
+          tick = ++tick % progressOpt.samplingRate;
+          if (tick === 0) progressOpt.pgCallback(totalBytes);
+          this.push(chunk);
+          callback();
+        },
+      });
+      await pipeline(stream, progressTracker, destFile);
     } catch (e) {
       throw new RecordError(
         `Error while writing record stream to disk. Reason ${e.message}`

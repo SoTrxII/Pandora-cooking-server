@@ -268,11 +268,17 @@ export class RecordsController implements interfaces.Controller {
       return;
     }
     // Collect record ID(s) to process
-    let ids: string[];
+    let ids: string[] = [];
     // ID is a string
     if (body?.id !== undefined) ids.push(body.id);
     // IDs is an array of string. If both are provided, "ids" takes precedence
     if (body?.ids !== undefined) ids = body.ids;
+
+    if (ids.length === 0) {
+      res.status(StatusCodes.BAD_REQUEST);
+      res.end("No record IDs specified");
+      return;
+    }
     // Finally, ensure each record id is unique
     ids = [...new Set(ids)];
     this.logger.info(`New incoming async request with param id "${ids}"`);
@@ -282,13 +288,13 @@ export class RecordsController implements interfaces.Controller {
     const recordExists = await Promise.all(
       ids.map(
         async (rid) =>
-          isNaN(Number(rid)) || !(await this.recordsService.exists(Number(rid)))
+          !isNaN(Number(rid)) && (await this.recordsService.exists(Number(rid)))
       )
     );
     // If any record doesn't exist, abort
     if (recordExists.some((exists) => exists === false)) {
       const invalidIDs = ids
-        .filter((id, index) => recordExists[index] === false)
+        .filter((_id, index) => recordExists[index] === false)
         .join(",");
       res.status(StatusCodes.NOT_FOUND);
       this.logger.info(
@@ -369,11 +375,9 @@ export class RecordsController implements interfaces.Controller {
       // Process all streams concurrently as async jobs, the controller
       // has no reason to supervise this
       .forEach((stream, index) =>
-        this.recordsService.startAsyncTranscodingJob(
-          stream,
-          ids.at(index),
-          options
-        )
+        this.recordsService
+          .startAsyncTranscodingJob(stream, ids.at(index), options)
+          .catch((e) => this.logger.error(e))
       );
   }
 

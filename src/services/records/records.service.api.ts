@@ -6,6 +6,15 @@ import {
 } from "../../pkg/cooker/cook-api";
 
 export class RecordError extends Error {}
+
+/** All valid options for customizing a async job */
+export interface IJobOptions {
+  /** time between two progress event (ms). Default 2000 */
+  progressInterval: number;
+
+  /** Update the processed size each X chunks. Default 100*/
+  writeDataSamplingRate: number;
+}
 export interface IRecordsService {
   /**
    * Get an audio stream from a record id and parameters
@@ -46,11 +55,13 @@ export interface IRecordsService {
    * and upload it on the backend storage if the component is defined
    * @param stream
    * @param id
-   * @param options
+   * @param cookOpt
+   * @param jobOpt
    */
   startAsyncTranscodingJob(
     stream: Readable,
     id: string,
-    options: ICookingOptions
+    cookOpt: ICookingOptions,
+    jobOpt?: IJobOptions
   ): Promise<void>;
 }
