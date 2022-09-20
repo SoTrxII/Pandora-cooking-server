@@ -1,15 +1,16 @@
 import { inject } from "inversify";
 import { TYPES } from "../../types";
 import { IMessageBroker } from "../../internal/message-broker/message-broker-api";
-import { IJobEvent, IJobNotifier, IJobProgress } from "./job-notifier.api";
+import {
+  IJobError,
+  IJobEvent,
+  IJobNotifier,
+  IJobProgress,
+} from "./job-notifier.api";
 import { ILogger } from "../logger/logger-api";
 
 export class JobNotifier implements IJobNotifier {
-  static readonly TOPICS = {
-    progress: "cookingProgress",
-    error: "cookingError",
-    done: "cookingDone",
-  };
+  static readonly TOPIC = "cooking-state";
 
   constructor(
     @inject(TYPES.MessageBroker) private broker: IMessageBroker,
@@ -17,15 +18,15 @@ export class JobNotifier implements IJobNotifier {
   ) {}
 
   async sendJobProgress(payload: IJobProgress) {
-    await this.sendData(JobNotifier.TOPICS.progress, payload);
+    await this.sendData(JobNotifier.TOPIC, payload);
   }
 
   async sendJobDone(payload: IJobEvent) {
-    await this.sendData(JobNotifier.TOPICS.done, payload);
+    await this.sendData(JobNotifier.TOPIC, payload);
   }
 
-  async sendJobError(payload: IJobEvent) {
-    await this.sendData(JobNotifier.TOPICS.error, payload);
+  async sendJobError(payload: IJobError) {
+    await this.sendData(JobNotifier.TOPIC, payload);
   }
 
   /**

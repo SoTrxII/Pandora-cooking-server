@@ -18,7 +18,10 @@ import { join } from "path";
 import { createWriteStream } from "fs";
 import { pipeline } from "stream/promises";
 import { tmpdir } from "os";
-import { IJobNotifier } from "../../pkg/job-notifier/job-notifier.api";
+import {
+  CookingState,
+  IJobNotifier,
+} from "../../pkg/job-notifier/job-notifier.api";
 
 @injectable()
 export class RecordsService implements IRecordsService {
@@ -144,7 +147,12 @@ export class RecordsService implements IRecordsService {
       // To handle progress, we publish the current bytes written every X seconds
       // We can't know at this time the total size
       progressInterval = setInterval(
-        async () => await this.jobNotifier.sendJobProgress({ totalBytes, id }),
+        async () =>
+          await this.jobNotifier.sendJobProgress({
+            recordId: id,
+            state: CookingState.InProgress,
+            data: { totalBytes },
+          }),
         jobOptions.progressInterval
       );
     }
@@ -160,7 +168,11 @@ export class RecordsService implements IRecordsService {
           totalBytes = total;
         },
       });
-      await this.jobNotifier.sendJobDone({ id });
+      await this.jobNotifier.sendJobDone({
+        recordId: id,
+        state: CookingState.InProgress,
+        data: null,
+      });
       // If the object store is defined, upload to transcoded file
       // and remove it from the disk
       if (this.objStore !== undefined) {
@@ -168,7 +180,11 @@ export class RecordsService implements IRecordsService {
         await unlink(path);
       }
     } catch (e) {
-      await this.jobNotifier.sendJobError({ id });
+      await this.jobNotifier.sendJobError({
+        recordId: id,
+        state: CookingState.InProgress,
+        data: { message: e.message },
+      });
       throw e;
     } finally {
       // In any case remove the zombie interval

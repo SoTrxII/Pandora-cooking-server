@@ -1,13 +1,29 @@
+export enum CookingState {
+  InProgress,
+  Done,
+  Error,
+}
+
 /** A job event is something happening to a job */
 export interface IJobEvent {
   /** Record id */
-  id: string;
+  recordId: string;
+  state: CookingState;
+  data: any;
 }
 
 /** A job progress is a peculiar Job Event, as it requires an additional argument */
 export interface IJobProgress extends IJobEvent {
-  /** Size of the transcoded record (bytes) */
-  totalBytes: number;
+  data: {
+    /** Size of the transcoded record (bytes) */
+    totalBytes: number;
+  };
+}
+export interface IJobError extends IJobEvent {
+  data: {
+    /** Error message */
+    message: string;
+  };
 }
 
 /**
@@ -30,5 +46,5 @@ export interface IJobNotifier {
    * Alert that a job errored
    * @param payload
    */
-  sendJobError(payload: IJobEvent): Promise<void>;
+  sendJobError(payload: IJobError): Promise<void>;
 }

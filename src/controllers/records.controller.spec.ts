@@ -180,6 +180,8 @@ describe("Records Controller", () => {
 
 function prepareRequest(params: Record<string, unknown>) {
   const req = Substitute.for<Request>();
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  //@ts-ignore
   req.params.returns(params);
   const res = Substitute.for<Response>();
   // Object are passed by ref in JS, but plain types are passes as values
@@ -187,6 +189,9 @@ function prepareRequest(params: Record<string, unknown>) {
   const ret = {
     rCode: 200,
   };
+
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
   res.status.returns((code) => {
     ret.rCode = code;
   });
