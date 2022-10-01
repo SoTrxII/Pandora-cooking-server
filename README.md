@@ -17,7 +17,7 @@ However, the cooking scripts have been slightly changed :
 Two endpoints are provided.
 
 - GET /:id Synchronously process and download a record by its ID
-- POST /:id Asynchronously process a record and store it on the file system/ remote object storage
+- POST / Asynchronously process a record and store it on the file system/ remote object storage
 - DELETE /:id to delete a record raw files
 
 You can choose the output format.
