@@ -58,7 +58,7 @@ if (objComponent) {
  * */
 const pubSubComponent = process.env?.PUBSUB_NAME;
 if (pubSubComponent) {
-  logger.info(`Using message broker "${objComponent}" !`);
+  logger.info(`Using message broker "${pubSubComponent}" !`);
   container
     .bind<IClientPubSub>(TYPES.PubSubClientProxy)
     .toConstantValue(new DaprClient().pubsub);

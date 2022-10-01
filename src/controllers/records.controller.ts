@@ -268,6 +268,10 @@ export class RecordsController implements interfaces.Controller {
       res.end("Invalid request, body empty !");
       return;
     }
+    // This may be a cloudevent formatted message sent by Dapr
+    if (body.data !== undefined && body.type === "com.dapr.event.sent") {
+      body = body.data;
+    }
     // Collect record ID(s) to process
     let ids: string[] = [];
     // ID is a string
