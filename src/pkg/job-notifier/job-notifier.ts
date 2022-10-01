@@ -1,4 +1,4 @@
-import { inject } from "inversify";
+import { inject, injectable } from "inversify";
 import { TYPES } from "../../types";
 import { IMessageBroker } from "../../internal/message-broker/message-broker-api";
 import {
@@ -9,6 +9,7 @@ import {
 } from "./job-notifier.api";
 import { ILogger } from "../logger/logger-api";
 
+@injectable()
 export class JobNotifier implements IJobNotifier {
   static readonly TOPIC = "cooking-state";
 
