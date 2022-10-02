@@ -170,7 +170,7 @@ export class RecordsService implements IRecordsService {
       });
       await this.jobNotifier.sendJobDone({
         recordId: id,
-        state: CookingState.InProgress,
+        state: CookingState.Done,
         data: null,
       });
       // If the object store is defined, upload to transcoded file
