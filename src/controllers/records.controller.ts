@@ -22,6 +22,12 @@ import {
 } from "../pkg/cooker/cook-api";
 import { Readable } from "stream";
 
+enum DAPR_RESPONSE {
+  OK = "SUCCESS",
+  NO_RETRY = "DROP",
+  RETRY = "RETRY",
+}
+
 /**
  * @openapi
  *     components:
@@ -264,11 +270,15 @@ export class RecordsController implements interfaces.Controller {
     req.setTimeout(0);
 
     if (body === undefined) {
-      res.status(StatusCodes.BAD_REQUEST);
-      res.end("Invalid request, body empty !");
+      res.status(StatusCodes.NOT_FOUND);
+      res.end(
+        JSON.stringify({
+          message: "Invalid request, body empty !",
+          status: DAPR_RESPONSE.NO_RETRY,
+        })
+      );
       return;
     }
-    // This may be a cloudevent formatted message sent by Dapr
     if (body.data !== undefined && body.type === "com.dapr.event.sent") {
       body = body.data;
     }
@@ -280,8 +290,13 @@ export class RecordsController implements interfaces.Controller {
     if (body?.ids !== undefined) ids = body.ids;
 
     if (ids.length === 0) {
-      res.status(StatusCodes.BAD_REQUEST);
-      res.end("No record IDs specified");
+      res.status(StatusCodes.NOT_FOUND);
+      res.end(
+        JSON.stringify({
+          message: "No record IDs specified",
+          status: DAPR_RESPONSE.NO_RETRY,
+        })
+      );
       return;
     }
     // Finally, ensure each record id is unique
@@ -307,7 +322,12 @@ export class RecordsController implements interfaces.Controller {
           ","
         )}] was denied : Some records ([${invalidIDs}]) don't exists`
       );
-      res.end(`Some of the provided record(s) (${invalidIDs}) don't exist !`);
+      res.end(
+        JSON.stringify({
+          message: `Some of the provided record(s) (${invalidIDs}) don't exist !`,
+          status: DAPR_RESPONSE.NO_RETRY,
+        })
+      );
       return;
     }
 
@@ -356,23 +376,38 @@ export class RecordsController implements interfaces.Controller {
       const exampleError = errors[0];
       // Format and container aren't compatible
       if (exampleError instanceof CookerOptionsInvalidError) {
-        res.status(StatusCodes.UNPROCESSABLE_ENTITY);
+        res.status(StatusCodes.NOT_FOUND);
         this.logger.warn(`Aborting record handling, invalid set of options`, {
           err: exampleError,
         });
-        res.end(exampleError.message);
+        res.end(
+          JSON.stringify({
+            message: exampleError.message,
+            status: DAPR_RESPONSE.NO_RETRY,
+          })
+        );
         return;
       }
       // Cooking script errored in some way
       res.status(StatusCodes.INTERNAL_SERVER_ERROR);
       this.logger.error(`Fatal error occurred. Error: `, { err: exampleError });
-      res.end("Error while cooking recording with ids: " + ids.join(","));
+      res.end(
+        JSON.stringify({
+          message: "Error while cooking recording with ids: " + ids.join(","),
+          status: DAPR_RESPONSE.NO_RETRY,
+        })
+      );
       return;
     }
 
     // Past this point, all streams have opened successfully, we can accept the job
     res.status(StatusCodes.ACCEPTED);
-    res.end();
+    res.end(
+      JSON.stringify({
+        message: `OK`,
+        status: DAPR_RESPONSE.OK,
+      })
+    );
 
     streams
       // all streams are valid past this point, we can directly get their value
