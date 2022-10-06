@@ -150,6 +150,7 @@ export class RecordsService implements IRecordsService {
         async () =>
           await this.jobNotifier.sendJobProgress({
             recordId: id,
+            jobId: jobOptions.jobId,
             state: CookingState.InProgress,
             data: { totalBytes },
           }),
@@ -170,6 +171,7 @@ export class RecordsService implements IRecordsService {
       });
       await this.jobNotifier.sendJobDone({
         recordId: id,
+        jobId: jobOptions.jobId,
         state: CookingState.Done,
         data: null,
       });
@@ -182,6 +184,7 @@ export class RecordsService implements IRecordsService {
     } catch (e) {
       await this.jobNotifier.sendJobError({
         recordId: id,
+        jobId: jobOptions.jobId,
         state: CookingState.InProgress,
         data: { message: e.message },
       });

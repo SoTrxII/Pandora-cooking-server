@@ -8,6 +8,7 @@ export enum CookingState {
 export interface IJobEvent {
   /** Record id */
   recordId: string;
+  jobId?: string;
   state: CookingState;
   data: any;
 }

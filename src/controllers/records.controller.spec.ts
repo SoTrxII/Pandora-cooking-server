@@ -42,13 +42,13 @@ describe("Records Controller", () => {
       const ctrl = getMockService();
       const reqP = prepareRequest({});
       await ctrl.processAsync(reqP.req, undefined, reqP.res);
-      expect(reqP.returnObj.rCode).toEqual(400);
+      expect(reqP.returnObj.rCode).toEqual(404);
     });
     it("Empty body", async () => {
       const ctrl = getMockService();
       const reqP = prepareRequest({});
       await ctrl.processAsync(reqP.req, {}, reqP.res);
-      expect(reqP.returnObj.rCode).toEqual(400);
+      expect(reqP.returnObj.rCode).toEqual(404);
     });
     it("Invalid id or ids", async () => {
       const ctrl = getMockService();

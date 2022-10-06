@@ -279,9 +279,11 @@ export class RecordsController implements interfaces.Controller {
       );
       return;
     }
+    // Also parse Dapr cloudevent format
     if (body.data !== undefined && body.type === "com.dapr.event.sent") {
       body = body.data;
     }
+
     // Collect record ID(s) to process
     let ids: string[] = [];
     // ID is a string
@@ -302,6 +304,10 @@ export class RecordsController implements interfaces.Controller {
     // Finally, ensure each record id is unique
     ids = [...new Set(ids)];
     this.logger.info(`New incoming async request with param id "${ids}"`);
+
+    // Optionnaly, the record can have a jobId, this is the ID for the batch
+    // of records, and will just be echoed
+    const jobId: string = body.jobId;
 
     // Once we've gotten all the record ids to process, ensure each one actually exists
     // to fail fast
@@ -416,7 +422,7 @@ export class RecordsController implements interfaces.Controller {
       // has no reason to supervise this
       .forEach((stream, index) =>
         this.recordsService
-          .startAsyncTranscodingJob(stream, ids.at(index), options)
+          .startAsyncTranscodingJob(stream, ids.at(index), options, { jobId })
           .catch((e) => this.logger.error(e))
       );
   }

@@ -14,6 +14,10 @@ export interface IJobOptions {
 
   /** Update the processed size each X chunks. Default 100*/
   writeDataSamplingRate: number;
+
+  /** UUID for a group of cooking job belonging to the same recording
+   * This is an optional property  */
+  readonly jobId?: string;
 }
 
 export interface IRecordsService {
@@ -63,6 +67,6 @@ export interface IRecordsService {
     stream: Readable,
     id: string,
     cookOpt: ICookingOptions,
-    jobOpt?: IJobOptions
+    jobOpt?: Partial<IJobOptions>
   ): Promise<void>;
 }
