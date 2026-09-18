@@ -22,6 +22,17 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      # Pin to the version the image itself runs. Without this the job takes
+      # whatever the runner currently ships, which is how the 2.5.0 release
+      # failed: zlib-sync builds against nan, nan does not support Node 22's v8
+      # API, and npm install died compiling it. The Dockerfile has always
+      # installed setup_18.x, so building deps on anything else was only ever
+      # working by coincidence.
+      - name: Use Node 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
       - name: Install deps
         run: npm install
 
