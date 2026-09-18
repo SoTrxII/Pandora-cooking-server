@@ -22,7 +22,10 @@ RUN DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y nodejs
 # Chasing peers one at a time cannot converge without a lockfile; npm 6 semantics
 # are what this project has in fact always been built and run with.
 COPY package.json /app/
-RUN npm install --legacy-peer-deps
+# Set once for the stage rather than per command: npm prune below re-resolves
+# the same tree and failed the 2.5.3 build for the same reason npm install did.
+RUN echo "legacy-peer-deps=true" > /app/.npmrc
+RUN npm install
 COPY . /app/
 COPY start.sh /app
 
