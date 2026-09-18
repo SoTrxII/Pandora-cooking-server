@@ -196,6 +196,44 @@ describe("Record service", () => {
       expect(calls.done).toEqual(1);
       expect(calls.progress).toBeGreaterThanOrEqual(1);
     });
+
+    it("Still completes when the speaker timeline cannot be built", async () => {
+      // The timeline is a best-effort extra: losing it costs a summary its
+      // speaker names, whereas failing here would cost the recording. A raw
+      // record that is corrupt, truncated or already partly cleaned up must
+      // not take the cooked audio down with it.
+      const calls: INotifierCalls = { done: 0, error: 0, progress: 0 };
+      const notifier = getMockedNotifier(calls);
+      const deps = getRecordsService({ notifier });
+      const sampleAudioPath = join(
+        __dirname,
+        "../../assets",
+        SAMPLE_RECORD_ID + ".ogg.data"
+      );
+      deps.cooker
+        .getFileMetadataFor(Arg.all())
+        .returns({ extension: "ogg", mime: "test" });
+      deps.cooker.exists(Arg.all()).returns(true);
+      deps.cooker
+        .getSpeakerTimeline(Arg.all())
+        .rejects(new Error("unreadable raw record"));
+
+      await expect(
+        deps.rServ.startAsyncTranscodingJob(
+          createReadStream(sampleAudioPath),
+          "1",
+          {
+            format: ALLOWED_FORMATS.COPY,
+            container: ALLOWED_CONTAINERS.MIX,
+            dynaudnorm: false,
+          },
+          { writeDataSamplingRate: 100, progressInterval: 10 }
+        )
+      ).resolves.not.toThrow();
+
+      expect(calls.error).toEqual(0);
+      expect(calls.done).toEqual(1);
+    });
   });
 });
 

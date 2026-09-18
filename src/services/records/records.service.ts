@@ -49,6 +49,34 @@ export class RecordsService implements IRecordsService {
   }
 
   /**
+   * Store who spoke and when, beside the cooked recording.
+   *
+   * This has to happen here, while the raw record is still on disk: the mixed
+   * file we just uploaded has no per-user separation left, and the raw files are
+   * deleted once processing is done. Miss this window and the identity of every
+   * speaker in the recording is gone permanently -- there is no way to recompute
+   * it later from the mix.
+   *
+   * Failures are logged and swallowed. A missing timeline costs the consumer its
+   * speaker names, which degrades a summary; failing the job here would cost the
+   * recording itself, which is not a trade worth making.
+   */
+  private async uploadSpeakerTimeline(id: string): Promise<void> {
+    const path = join(tmpdir(), `${id}.ogg.timeline.json`);
+    try {
+      const timeline = await this.getSpeakerTimeline(Number(id));
+      await writeFile(path, JSON.stringify(timeline));
+      // create() keys objects on the basename, so this lands next to the
+      // recording as <id>.ogg.timeline.json -- the same convention .users uses.
+      await this.objStore.create(path);
+    } catch (e) {
+      console.warn(`Could not store the speaker timeline for ${id}: ${e}`);
+    } finally {
+      await unlink(path).catch(() => undefined);
+    }
+  }
+
+  /**
    * Downloads all files prefixed by `id` on the local file system
    * @param id
    */
@@ -189,6 +217,7 @@ export class RecordsService implements IRecordsService {
       if (this.objStore !== undefined) {
         await this.objStore.create(path);
         await unlink(path);
+        await this.uploadSpeakerTimeline(id);
       }
     } catch (e) {
       await this.jobNotifier.sendJobError({
