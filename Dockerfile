@@ -12,8 +12,17 @@ RUN apt update -y && DEBIAN_FRONTEND=noninteractive apt install -y curl \
 RUN DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y nodejs dos2unix build-essential git
 
 # Install app deps
+#
+# --legacy-peer-deps because this build has no lockfile: only package.json is
+# copied, and the repo's lockfile is a yarn.lock that npm ignores, so every
+# build re-resolves against whatever is current on the registry. That drift is
+# what broke releases 2.5.0 through 2.5.2 -- inversify floated to 6.2.2 whose
+# peer wants reflect-metadata 0.2, then pinning inversify made
+# inversify-express-utils float to 6.5.0 whose peer wants inversify ^6.0.3.
+# Chasing peers one at a time cannot converge without a lockfile; npm 6 semantics
+# are what this project has in fact always been built and run with.
 COPY package.json /app/
-RUN npm install
+RUN npm install --legacy-peer-deps
 COPY . /app/
 COPY start.sh /app
 
