@@ -12,6 +12,10 @@ import { execSync, spawn } from "child_process";
 import { Readable } from "stream";
 import { injectable } from "inversify";
 import { readFile } from "fs/promises";
+import {
+  extractSpeakerTimeline,
+  ISpeakerTimeline,
+} from "./speaker-timeline";
 
 export class CookerOptionsInvalidError extends Error {}
 
@@ -174,6 +178,16 @@ export class Cooker implements ICooking {
     if (isLocked)
       Cooker.SUFFIXES.map((s) => `${fileBase}${s}`).forEach(unlinkSync);
     return isLocked;
+  }
+
+  getSpeakerTimeline(id: number): Promise<ISpeakerTimeline> {
+    // cookingScriptPath is where cook.sh lives, and cook/oggtracks sits beside
+    // it -- the same layout cook.sh itself assumes via SCRIPTBASE.
+    return extractSpeakerTimeline(
+      this.recordingsDir,
+      this.cookingScriptPath,
+      id
+    );
   }
 
   async getRecordMetadata(id: number): Promise<Partial<IRecordMetadata>> {

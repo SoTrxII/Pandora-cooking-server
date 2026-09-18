@@ -7,6 +7,7 @@ import {
   IFileMetadata,
   IRecordMetadata,
 } from "../../pkg/cooker/cook-api";
+import { ISpeakerTimeline } from "../../pkg/cooker/speaker-timeline";
 import { Readable, Transform, Writable } from "stream";
 import {
   IJobOptions,
@@ -37,6 +38,14 @@ export class RecordsService implements IRecordsService {
       await this.downloadFromRemote(id, this.cooker.recordingsDir);
     // And then cook
     return this.cooker.cook(id, options);
+  }
+
+  async getSpeakerTimeline(id: number): Promise<ISpeakerTimeline> {
+    // Same precondition as stream(): the raw files have to be on local disk,
+    // and they are what carries the per-user streams.
+    if (!this.existsOnLocal(id) && this.objStore !== undefined)
+      await this.downloadFromRemote(id, this.cooker.recordingsDir);
+    return this.cooker.getSpeakerTimeline(id);
   }
 
   /**
@@ -88,7 +97,7 @@ export class RecordsService implements IRecordsService {
    */
   async existsOnRemote(id: number): Promise<boolean> {
     const list = await this.objStore.list({ prefix: String(id) });
-    return list.Contents.length > 0;
+    return list.Contents?.length > 0;
   }
 
   /**

@@ -1,4 +1,5 @@
 import { Readable } from "stream";
+import { ISpeakerTimeline } from "./speaker-timeline";
 
 /**
  * A set of metadata for a cooked record
@@ -104,6 +105,16 @@ export interface ICooking {
    * @param filePath
    */
   getExclusiveLock(filePath: string): boolean;
+
+  /**
+   * Who spoke, and when, keyed by Discord account.
+   *
+   * Only derivable from the raw record: the mixed audio we hand downstream has
+   * no per-user separation left, and the raw files are deleted shortly after
+   * cooking. Whatever needs this has to ask for it while the record still exists.
+   * @param id
+   */
+  getSpeakerTimeline(id: number): Promise<ISpeakerTimeline>;
 
   /**
    * Returns all metadata written by Pandora when the record started

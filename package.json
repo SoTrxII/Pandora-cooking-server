@@ -1,6 +1,6 @@
 {
   "name": "cooking-server",
-  "version": "2.4.4",
+  "version": "2.5.0",
   "main": "index.js",
   "license": "ISC",
   "scripts": {
@@ -11,7 +11,8 @@
     "build": "tsc && npx shx cp package.json dist/package.json",
     "postbuild": "npx shx mkdir -p dist/rec && npx shx cp -r src/assets/* dist/rec/ && npx shx cp -r cook dist/cook && npx shx cp cook.sh dist/cook.sh",
     "start:dapr": "dapr run --log-level debug --dapr-http-max-request-size 300 --app-id cooking-server --app-port 3004 --dapr-http-port 3500 --components-path ./dapr/components",
-    "start:dev": "npm run build && node -r dotenv-safe/config dist/server.js "
+    "start:unix": " npm run build && dos2unix dist/cook.sh dist/cook/* && cd dist/cook && for i in *.c; do gcc -O3 -o ${i%.c} $i;done && cd - && node -r dotenv-safe/config dist/server.js",
+    "start:dev": "npm run build && node -r dotenv-safe/config dist/server.js"
   },
   "dependencies": {
     "@dapr/dapr": "^2.3.0",

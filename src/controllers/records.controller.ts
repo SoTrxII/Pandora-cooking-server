@@ -63,6 +63,52 @@ export class RecordsController implements interfaces.Controller {
 
   /**
    * @openapi
+   * /{id}/timeline:
+   *   get:
+   *     summary: Who spoke, and when, keyed by Discord account
+   *     description: |
+   *       Derived from the raw per-user ogg streams, not from the mixed audio:
+   *       Discord only transmits while someone is speaking, so the page granule
+   *       positions already are the timeline. No decoding and no diarization.
+   *
+   *       Only answerable while the raw record still exists on disk. Records are
+   *       deleted shortly after cooking, so callers that want this must ask for
+   *       it as part of processing, not hours later.
+   *     parameters:
+   *        - name: id
+   *          in: path
+   *          required: true
+   *          schema:
+   *            type: number
+   *          description: Record id
+   */
+  @httpGet(":id/timeline")
+  async timeline(
+    @request() req: express.Request,
+    @response() res: express.Response
+  ) {
+    const id = Number(req.params.id);
+    if (isNaN(id) || !(await this.recordsService.exists(id))) {
+      res.status(StatusCodes.NOT_FOUND);
+      this.logger.info(
+        `Timeline for record "${req.params.id}" was denied : No such record`
+      );
+      res.end(`Record ${req.params.id} doesn't exists !`);
+      return;
+    }
+
+    try {
+      res.status(StatusCodes.OK).json(
+        await this.recordsService.getSpeakerTimeline(id)
+      );
+    } catch (e) {
+      this.logger.error(`Could not build the timeline for ${id} : ${e}`);
+      res.status(StatusCodes.INTERNAL_SERVER_ERROR).end(String(e));
+    }
+  }
+
+  /**
+   * @openapi
    *
    * /{id}:
    *   get:

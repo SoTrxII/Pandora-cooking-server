@@ -4,6 +4,7 @@ import {
   IFileMetadata,
   IRecordMetadata,
 } from "../../pkg/cooker/cook-api";
+import { ISpeakerTimeline } from "../../pkg/cooker/speaker-timeline";
 
 export class RecordError extends Error {}
 
@@ -54,6 +55,13 @@ export interface IRecordsService {
    * @param id
    */
   getRecordMetadata(id: number): Promise<Partial<IRecordMetadata>>;
+
+  /**
+   * Who spoke, and when, keyed by Discord account.
+   * @throws RecordError if the raw record could not be made available locally
+   * @param id
+   */
+  getSpeakerTimeline(id: number): Promise<ISpeakerTimeline>;
 
   /**
    * Asynchronously transcode a record into an audio stream
