@@ -5,6 +5,10 @@ import { ILogger } from "../pkg/logger/logger-api";
 import { IRecordsService } from "../services/records/records.service.api";
 import { Request, Response } from "express";
 import { CookerOptionsInvalidError } from "../pkg/cooker/cook";
+import {
+  CookingState,
+  IJobNotifier,
+} from "../pkg/job-notifier/job-notifier.api";
 
 describe("Records Controller", () => {
   describe("Get", () => {
@@ -85,6 +89,37 @@ describe("Records Controller", () => {
       const reqP = prepareRequest({});
       await ctrl.processAsync(reqP.req, { id: "3333" }, reqP.res);
       expect(reqP.returnObj.rCode).toEqual(500);
+    });
+
+    // The orchestrator only learns of a refusal through this event
+    it("Refusal of a job is published as its error", async () => {
+      const notifier = Substitute.for<IJobNotifier>();
+      const ctrl = getMockService({ existsReturn: false }, notifier);
+      const reqP = prepareRequest({});
+      await ctrl.processAsync(
+        reqP.req,
+        { ids: ["e2e-1"], jobId: "job-1" },
+        reqP.res
+      );
+      expect(reqP.returnObj.rCode).toEqual(404);
+      notifier
+        .received(1)
+        .sendJobError(
+          Arg.is(
+            (e) =>
+              e.jobId === "job-1" &&
+              e.state === CookingState.Error &&
+              e.data.message.includes("e2e-1")
+          )
+        );
+    });
+
+    it("Refusal without a job id publishes nothing", async () => {
+      const notifier = Substitute.for<IJobNotifier>();
+      const ctrl = getMockService({ existsReturn: false }, notifier);
+      const reqP = prepareRequest({});
+      await ctrl.processAsync(reqP.req, { id: "3333" }, reqP.res);
+      notifier.didNotReceive().sendJobError(Arg.all());
     });
   });
   describe("Delete", () => {
@@ -204,7 +239,8 @@ function getMockService(
     streamError: Error;
     deleteReturn: Error | boolean;
     existsReturn: boolean;
-  }>
+  }>,
+  notifier?: IJobNotifier
 ) {
   const rService = Substitute.for<IRecordsService>();
   if (err?.existsReturn == false) rService.exists(Arg.all()).resolves(false);
@@ -220,5 +256,5 @@ function getMockService(
     else rService.delete(Arg.all()).returns(Promise.resolve(err?.deleteReturn));
   }
 
-  return new RecordsController(rService, Substitute.for<ILogger>());
+  return new RecordsController(rService, Substitute.for<ILogger>(), notifier);
 }

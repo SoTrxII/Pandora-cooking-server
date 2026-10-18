@@ -11,7 +11,7 @@ import {
 } from "inversify-express-utils";
 import { CookerOptionsInvalidError } from "../pkg/cooker/cook";
 import { StatusCodes } from "http-status-codes";
-import { inject } from "inversify";
+import { inject, optional } from "inversify";
 import { TYPES } from "../types";
 import { IRecordsService } from "../services/records/records.service.api";
 import { ILogger } from "../pkg/logger/logger-api";
@@ -21,6 +21,10 @@ import {
   IRecordMetadata,
 } from "../pkg/cooker/cook-api";
 import { Readable } from "stream";
+import {
+  CookingState,
+  IJobNotifier,
+} from "../pkg/job-notifier/job-notifier.api";
 
 enum DAPR_RESPONSE {
   OK = "SUCCESS",
@@ -58,7 +62,8 @@ enum DAPR_RESPONSE {
 export class RecordsController implements interfaces.Controller {
   constructor(
     @inject(TYPES.ServiceRecords) private recordsService: IRecordsService,
-    @inject(TYPES.Logger) private logger: ILogger
+    @inject(TYPES.Logger) private logger: ILogger,
+    @inject(TYPES.JobNotifier) @optional() private jobNotifier?: IJobNotifier
   ) {}
 
   /**
@@ -337,23 +342,23 @@ export class RecordsController implements interfaces.Controller {
     // IDs is an array of string. If both are provided, "ids" takes precedence
     if (body?.ids !== undefined) ids = body.ids;
 
+    // Optionnaly, the record can have a jobId, this is the ID for the batch
+    // of records, and will just be echoed
+    const jobId: string = body.jobId;
+
     if (ids.length === 0) {
-      res.status(StatusCodes.NOT_FOUND);
-      res.end(
-        JSON.stringify({
-          message: "No record IDs specified",
-          status: DAPR_RESPONSE.NO_RETRY,
-        })
+      await this.refuse(
+        res,
+        StatusCodes.NOT_FOUND,
+        "No record IDs specified",
+        jobId,
+        ids
       );
       return;
     }
     // Finally, ensure each record id is unique
     ids = [...new Set(ids)];
     this.logger.info(`New incoming async request with param id "${ids}"`);
-
-    // Optionnaly, the record can have a jobId, this is the ID for the batch
-    // of records, and will just be echoed
-    const jobId: string = body.jobId;
 
     // Once we've gotten all the record ids to process, ensure each one actually exists
     // to fail fast
@@ -368,17 +373,17 @@ export class RecordsController implements interfaces.Controller {
       const invalidIDs = ids
         .filter((_id, index) => recordExists[index] === false)
         .join(",");
-      res.status(StatusCodes.NOT_FOUND);
       this.logger.info(
         `Request for record(s) with id(s) [${ids.join(
           ","
         )}] was denied : Some records ([${invalidIDs}]) don't exists`
       );
-      res.end(
-        JSON.stringify({
-          message: `Some of the provided record(s) (${invalidIDs}) don't exist !`,
-          status: DAPR_RESPONSE.NO_RETRY,
-        })
+      await this.refuse(
+        res,
+        StatusCodes.NOT_FOUND,
+        `Some of the provided record(s) (${invalidIDs}) don't exist !`,
+        jobId,
+        ids
       );
       return;
     }
@@ -428,26 +433,26 @@ export class RecordsController implements interfaces.Controller {
       const exampleError = errors[0];
       // Format and container aren't compatible
       if (exampleError instanceof CookerOptionsInvalidError) {
-        res.status(StatusCodes.NOT_FOUND);
         this.logger.warn(`Aborting record handling, invalid set of options`, {
           err: exampleError,
         });
-        res.end(
-          JSON.stringify({
-            message: exampleError.message,
-            status: DAPR_RESPONSE.NO_RETRY,
-          })
+        await this.refuse(
+          res,
+          StatusCodes.NOT_FOUND,
+          exampleError.message,
+          jobId,
+          ids
         );
         return;
       }
       // Cooking script errored in some way
-      res.status(StatusCodes.INTERNAL_SERVER_ERROR);
       this.logger.error(`Fatal error occurred. Error: `, { err: exampleError });
-      res.end(
-        JSON.stringify({
-          message: "Error while cooking recording with ids: " + ids.join(","),
-          status: DAPR_RESPONSE.NO_RETRY,
-        })
+      await this.refuse(
+        res,
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        "Error while cooking recording with ids: " + ids.join(","),
+        jobId,
+        ids
       );
       return;
     }
@@ -471,6 +476,38 @@ export class RecordsController implements interfaces.Controller {
           .startAsyncTranscodingJob(stream, ids.at(index), options, { jobId })
           .catch((e) => this.logger.error(e))
       );
+  }
+
+  /**
+   * Turn down a cook before it starts. The DROP tells Dapr not to redeliver,
+   * and nothing else: the publisher never hears of it. Without the error
+   * event, processing-orchestrator waited 10 min, asked again twice, and
+   * failed the job after 30 as "no news" (2026-10-18, a non-numeric record id)
+   */
+  private async refuse(
+    res: express.Response,
+    code: StatusCodes,
+    message: string,
+    jobId: string | undefined,
+    ids: string[]
+  ) {
+    res.status(code);
+    res.end(JSON.stringify({ message, status: DAPR_RESPONSE.NO_RETRY }));
+    // Without a job id this is a direct call, and the reply was the answer
+    if (jobId === undefined || this.jobNotifier === undefined) return;
+    try {
+      await this.jobNotifier.sendJobError({
+        recordId: ids.join(","),
+        jobId,
+        state: CookingState.Error,
+        data: { message },
+      });
+    } catch (e) {
+      // The orchestrator still has its silence timer to fall back on
+      this.logger.error(`Could not report the refusal of job ${jobId}`, {
+        err: e,
+      });
+    }
   }
 
   /**
