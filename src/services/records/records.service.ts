@@ -206,12 +206,6 @@ export class RecordsService implements IRecordsService {
           totalBytes = total;
         },
       });
-      await this.jobNotifier.sendJobDone({
-        recordId: id,
-        jobId: jobOptions.jobId,
-        state: CookingState.Done,
-        data: null,
-      });
       // If the object store is defined, upload to transcoded file
       // and remove it from the disk
       if (this.objStore !== undefined) {
@@ -219,11 +213,22 @@ export class RecordsService implements IRecordsService {
         await unlink(path);
         await this.uploadSpeakerTimeline(id);
       }
+      // Only now: the orchestrator starts the encode on this event, and
+      // encode-box downloads the file. Sent before the upload, it could ask
+      // for an <id>.ogg still on its way to the object store
+      await this.jobNotifier.sendJobDone({
+        recordId: id,
+        jobId: jobOptions.jobId,
+        state: CookingState.Done,
+        data: null,
+      });
     } catch (e) {
       await this.jobNotifier.sendJobError({
         recordId: id,
         jobId: jobOptions.jobId,
-        state: CookingState.InProgress,
+        // The orchestrator fails the job on this state alone. With
+        // InProgress, an error read as more progress and the job waited forever
+        state: CookingState.Error,
         data: { message: e.message },
       });
       throw e;

@@ -11,6 +11,7 @@ import { IObjectStore } from "../../pkg/object-store/objet-store-api";
 import { tmpdir } from "os";
 import { RecordError } from "./records.service.api";
 import {
+  CookingState,
   IJobEvent,
   IJobNotifier,
   IJobProgress,
@@ -234,8 +235,78 @@ describe("Record service", () => {
       expect(calls.error).toEqual(0);
       expect(calls.done).toEqual(1);
     });
+
+    it("Announces done only once the cooked file is in the object store", async () => {
+      // The orchestrator starts the encode on "done", and encode-box then
+      // downloads the file
+      const { deps, events } = getOrderedJob();
+      deps.objStore.create(Arg.all()).mimicks(async (...paths: string[]) => {
+        events.push(`upload ${paths.join()}`);
+        return paths.length;
+      });
+
+      await deps.rServ.startAsyncTranscodingJob(
+        createReadStream(sampleAudio()),
+        "1",
+        transcodeOpts,
+        { writeDataSamplingRate: 100, progressInterval: 10_000 }
+      );
+
+      expect(events).toEqual([
+        `upload ${join(tmpdir(), "1.ogg")}`,
+        `upload ${join(tmpdir(), "1.ogg.timeline.json")}`,
+        "done",
+      ]);
+    });
+
+    it("Reports a failed upload as an error, not as progress", async () => {
+      const { deps, events } = getOrderedJob();
+      deps.objStore.create(Arg.all()).rejects(new Error("bucket gone"));
+
+      await expect(
+        deps.rServ.startAsyncTranscodingJob(
+          createReadStream(sampleAudio()),
+          "1",
+          transcodeOpts,
+          { writeDataSamplingRate: 100, progressInterval: 10_000 }
+        )
+      ).rejects.toThrow("bucket gone");
+
+      expect(events).toEqual([`error ${CookingState.Error}`]);
+    });
   });
 });
+
+const transcodeOpts = {
+  format: ALLOWED_FORMATS.COPY,
+  container: ALLOWED_CONTAINERS.MIX,
+  dynaudnorm: false,
+};
+
+const sampleAudio = () =>
+  join(__dirname, "../../assets", SAMPLE_RECORD_ID + ".ogg.data");
+
+/** A job whose notifier writes what it is told, in order, in `events` */
+function getOrderedJob() {
+  const events: string[] = [];
+  const deps = getRecordsService({
+    notifier: {
+      async sendJobProgress() {},
+      async sendJobDone() {
+        events.push("done");
+      },
+      async sendJobError(p: IJobEvent) {
+        events.push(`error ${p.state}`);
+      },
+    },
+  });
+  deps.cooker
+    .getFileMetadataFor(Arg.all())
+    .returns({ extension: ".ogg", mime: "test" });
+  deps.cooker.exists(Arg.all()).returns(true);
+  deps.cooker.getSpeakerTimeline(Arg.all()).resolves({} as never);
+  return { deps, events };
+}
 
 interface IRecordServOpt {
   /** Whether to initialize remote storage */
