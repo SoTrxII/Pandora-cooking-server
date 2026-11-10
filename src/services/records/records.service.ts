@@ -1,4 +1,5 @@
 import { inject, injectable, optional } from "inversify";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { TYPES } from "../../types";
 import { IObjectStore } from "../../pkg/object-store/objet-store-api";
 import {
@@ -164,11 +165,40 @@ export class RecordsService implements IRecordsService {
     }
   }
 
+  /**
+   * The cook gets a span of its own: the controller answers the `cookings`
+   * delivery with 202 once the streams are open and leaves this unawaited, so
+   * the delivery's span ends with the reply. On 2026-11-09 it read 1.87s for a
+   * cook of 3 min 29s. Started in the request's context, this one sits under
+   * it and lasts until the file is uploaded and announced. Without the
+   * operator's injected SDK (tests, local runs), the API is a no-op
+   */
   async startAsyncTranscodingJob(
     stream: Readable,
     id: string,
     cookOpt: ICookingOptions,
     jobOpt: Partial<IJobOptions> = {}
+  ): Promise<void> {
+    return trace
+      .getTracer("cooking-server")
+      .startActiveSpan(`cook ${id}`, async (span) => {
+        try {
+          await this.transcode(stream, id, cookOpt, jobOpt);
+        } catch (e) {
+          span.recordException(e);
+          span.setStatus({ code: SpanStatusCode.ERROR, message: e.message });
+          throw e;
+        } finally {
+          span.end();
+        }
+      });
+  }
+
+  private async transcode(
+    stream: Readable,
+    id: string,
+    cookOpt: ICookingOptions,
+    jobOpt: Partial<IJobOptions>
   ): Promise<void> {
     const defaultJobOpt: IJobOptions = {
       progressInterval: 2000,
