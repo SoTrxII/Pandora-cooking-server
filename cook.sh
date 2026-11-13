@@ -48,7 +48,16 @@ shift
 # the timestamps are already being smoothed by oggstender such that (a) we'll
 # always do stretching/squeezing and (b) the rate of stretching/squeezing is
 # limited by the drop rate of packets
-ARESAMPLE="aresample=flags=res:min_comp=0.001:max_soft_comp=1000000:min_hard_comp=16:first_pts=0"
+#
+# min_hard_comp is 1 s, not 16: (b) fails when the decoder drops packets that
+# oggstender counted. Record 289586425 (campaign 7 ep 74) carried 4 junk packets
+# at 7085.7 s, one claiming 63 frames; libopus rejected them, leaving a 1.5 s pts
+# jump, and soft-compensating it at max_soft_comp=1000000 made aresample stop
+# emitting for good (ffmpeg 8.0 in the image, 6.1 too): the GM's track ended at 1h58 of 3h14, silently,
+# in the mix as in per-track cooks. Filling jumps over 1 s with silence instead
+# restores the full track; a clean track is byte-identical either way, since
+# oggstender already fills gaps over 0.5 s (25 packets).
+ARESAMPLE="aresample=flags=res:min_comp=0.001:max_soft_comp=1000000:min_hard_comp=1:first_pts=0"
 FILTER="$ARESAMPLE"
 
 for arg in "$@"
